@@ -1,7 +1,16 @@
 # awesome-battery-data
-An awesome list of open-source battery data (electrochemical, safety, and microstructural), data analysis tools, modeling code, microstructure analysis, and data repositories and review papers. This aims to be a one-stop shop for the open-source battery data, modeling, and analysis ecosystem! These resources are also published on a [Google doc](https://docs.google.com/spreadsheets/d/1-mS3OJeEq_oGGUAXK3_mNSf_OXbBOHw5tmQacO-acyM/edit?usp=sharing).
+An awesome list of open-source battery data (electrochemical, safety, and microstructural), data analysis tools, modeling code, microstructure analysis, and data repositories and review papers. This aims to be a one-stop shop for the open-source battery data, modeling, and analysis ecosystem! 
+These resources are also published on a [Google doc](https://docs.google.com/spreadsheets/d/1-mS3OJeEq_oGGUAXK3_mNSf_OXbBOHw5tmQacO-acyM/edit?usp=sharing). 
 
-Collated by Paul Gasper in 2025 as part of the Volta Foundation 2025 Battery Report. Please contribute! To add information, please edit this README and push you changes as a pull request.
+As of 2025-12-30, this list has:
+- **Battery data from 6,439 distinct battery cells** from all types, formats, applications, and types of data a nerd could dream of
+- **4 imaging and tomography libraries** for 2D and 3D microstructural data
+- **6 safety and thermal runaway entries** including 2 databases
+- **19 battery modeling codebases** for simulating battery electrical, thermal, and aging behavior from electrode-scale to macro-scale
+- **14 battery data analysis codebases** for processing, plotting, model fitting, and machine-learing feature extraction of raw battery test data
+- Links to various other repositories, databases, publications, and collection of open-source battery data, models, or code
+
+Collated by Paul Gasper in 2025 as part of the Volta Foundation 2025 Battery Report. Please contribute! To add information, please edit this README and push your changes, and make a pull request to notify me.
 
 # Data
 ## Electrochemical data
