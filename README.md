@@ -166,6 +166,7 @@ Collated by Paul Gasper in 2025 as part of the Volta Foundation 2025 Battery Rep
 | Batemo                    | https://www.batemo.com/                                                                    |
 
 ## Publications and Data Repositories (how to find more data, basically)
+|--------------------------------------------|------------------------------------------------------------------------------------------------------------------------------|
 | dos Reis et al, 2021                       | https://www.sciencedirect.com/science/article/pii/S2666546821000355                                                          |
 | Hassini et al, 2023                        | https://www.mdpi.com/2313-0105/9/7/385                                                                                       |
 | Mayemba et al, 2024                        | https://www.sciencedirect.com/science/article/pii/S2352152X24001440                                                          |
