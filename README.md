@@ -1,9 +1,3 @@
-<style scoped>
-table {
-  font-size: 13px;
-}
-</style>
-
 ![logo](awesome-battery-data.png)
 
 # awesome-battery-data
