@@ -170,7 +170,7 @@ Started by Paul Gasper in 2025 as part of the Volta Foundation 2025 Battery Repo
 | AmpLabs                    | https://github.com/battery-data-alliance/amplabs                      | Python, Matlab | Battery data management and extraction of metrics                      |
 | PyMacNet                   | https://github.com/battery-data-alliance/pymacnet                     | Python         | Cycler interfacing                                                     |
 | PyCTIArbin                 | https://github.com/battery-data-alliance/pyctiarbin                   | Python         | Cycler interfacing                                                     |
-| Battery Data Format        | https://github.com/battery-data-alliance/battery-data-format-ontology | Python         | Battery data management and extraction of metrics                      |
+| Battery Data Format        | https://github.com/battery-data-alliance/battery-data-format          | Python         | Battery data management and extraction of metrics                      |
 | Voltaiq Data Format        | https://github.com/SubwayLabs/VoltaiqDataFormat                       | Python         | Battery data management                                                |
 | PyGamry                    | https://github.com/jdhuang-csm/pygamry                                | Python         | Cycler interfacing                                                     |
 | galv                       | https://github.com/galv-team                                          | Python         | Cycler interfacing, automatic data harvesting, battery data management |
