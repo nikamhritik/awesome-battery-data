@@ -1,5 +1,5 @@
 param(
-    [string]$OutputDir = (Join-Path ([IO.Path]::GetTempPath()) 'wheres-my-meme-windows-1.1.0')
+    [string]$OutputDir = (Join-Path ([IO.Path]::GetTempPath()) 'wheres-my-meme-windows')
 )
 
 $ErrorActionPreference = 'Stop'
@@ -32,6 +32,7 @@ $env:COVERAGE_FILE = Join-Path $Verification '.coverage'
 Invoke-TaskPython @('-m', 'venv', $Venv)
 $TaskPython = Join-Path $Venv 'Scripts/python.exe'
 Invoke-TaskPython @('-m', 'pip', 'install', '--disable-pip-version-check', '-r', (Join-Path $RepoRoot 'desktop/requirements.txt'))
+$AppVersion = (Invoke-TaskPython @('-c', 'from memeocr import __version__; print(__version__)')).Trim()
 
 $OldLocation = Get-Location
 try {
@@ -41,7 +42,7 @@ try {
         "--cov-report=json:$(Join-Path $Verification 'coverage.json')", '--cov-report=term-missing',
         "--junitxml=$(Join-Path $Verification 'tests.xml')")
     Invoke-TaskPython @((Join-Path $RepoRoot 'desktop/build_support.py'), $Resources)
-    $ExeName = 'WhereIsMyMeme-1.1.0-windows-x64'
+    $ExeName = "WhereIsMyMeme-$AppVersion-windows-x64"
     $PackArguments = @('-m', 'PyInstaller', '--noconfirm', '--clean', '--onefile', '--windowed',
         '--name', $ExeName, '--distpath', $Release, '--workpath', $Work, '--specpath', $Work,
         '--paths', (Join-Path $RepoRoot 'desktop'), '--collect-data', 'rapidocr_onnxruntime',
@@ -80,13 +81,16 @@ try {
         throw "Frozen executable self-test failed with exit code $($Process.ExitCode)"
     }
     $Result = Get-Content $Report -Raw | ConvertFrom-Json
-    if (-not $Result.success -or -not $Result.frozen -or $Result.platform -ne 'win32' -or $Result.qt_platform -ne 'windows') {
+    if (-not $Result.success -or -not $Result.frozen -or $Result.platform -ne 'win32' -or $Result.qt_platform -ne 'windows' -or $Result.version -ne $AppVersion) {
         throw 'Frozen executable verification did not pass on the native Windows platform.'
     }
     $Digest = (Get-FileHash $Executable -Algorithm SHA256).Hash.ToLowerInvariant()
     [IO.File]::WriteAllText((Join-Path $Release 'SHA256SUMS'), "$Digest  $ExeName.exe`n", [Text.UTF8Encoding]::new($false))
     Write-Output "Verified executable: $Executable"
     Write-Output "SHA256: $Digest"
+    if ($env:GITHUB_OUTPUT) {
+        Add-Content -Path $env:GITHUB_OUTPUT -Value "version=$AppVersion" -Encoding utf8
+    }
 } finally {
     Set-Location $OldLocation
 }

@@ -7,6 +7,8 @@ import sys
 from importlib.metadata import distributions
 from pathlib import Path
 
+from memeocr import __version__
+
 
 def main():
     target = Path(sys.argv[1]).resolve()
@@ -38,7 +40,7 @@ def main():
 
     models = Path(rapidocr_onnxruntime.__file__).parent / "models"
     manifest = {
-        "version": "1.1.0", "python": sys.version,
+        "version": __version__, "python": sys.version,
         "dependencies": dependencies,
         "models": {p.name: hashlib.sha256(p.read_bytes()).hexdigest() for p in models.glob("*.onnx")},
     }

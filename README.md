@@ -18,7 +18,7 @@ Then Astra came to the rescue and helped me write this app. And by "helped," I m
 
 ## Release and compatibility
 
-Windows 1.1.0 is available for local testing as a portable executable for Windows 10/11 x64. It includes Python, Qt, the Chinese OCR models and the required runtime libraries. You do not need to install Python or download a model. Its first launch extracts runtime files into the system temporary directory.
+Windows 1.0.0 is available for local testing as a portable executable for Windows 10/11 x64. A release or a port of existing features does not change the application version. It includes Python, Qt, the Chinese OCR models and the required runtime libraries. You do not need to install Python or download a model. Its first launch extracts runtime files into the system temporary directory.
 
 Android 1.0.0 is a signed, non-debuggable APK, approximately 44.2 MiB. It supports Android 8.0 / API 26 and later.
 
@@ -26,7 +26,7 @@ The Android app has been tested on an Android 11 AOSP emulator without Google Pl
 
 ## Use on Windows
 
-1. Open the test executable `WhereIsMyMeme-1.1.0-windows-x64.exe` by double-clicking it. No installer or administrator access is needed.
+1. Open the test executable `WhereIsMyMeme-1.0.0-windows-x64.exe` by double-clicking it. No installer or administrator access is needed.
 2. On **识别相册**, click **选择文件夹**. Enable **包含子文件夹** if your memes are stored in nested folders.
 3. Choose a batch size, then click **开始识别本批**. The default is 1,000 images; the range is 1–10,000. **停止本批** saves the current image before stopping. Start again to continue, or use **重试本相册失败项** to retry failures.
 4. On **搜索图片**, enter text and click **查找图片**. Results span all registered folders. **正则模式** supports the same RE2 syntax described below.

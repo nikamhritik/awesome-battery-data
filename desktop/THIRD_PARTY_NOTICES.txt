@@ -1,4 +1,4 @@
-Where's My Meme for Windows 1.1.0
+Where's My Meme for Windows 1.0.0
 
 Project source: https://github.com/rb-tyz/wheres-my-meme (MIT).
 Runtime components remain under their respective licenses.

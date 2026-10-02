@@ -27,12 +27,13 @@ jobs:
           python-version: '3.12'
           architecture: x64
       - name: Test, package, and verify the frozen executable
+        id: build
         shell: pwsh
         run: ./scripts/build-windows.ps1 -OutputDir "${{ runner.temp }}/wheres-my-meme-windows"
       - name: Upload verified executable
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: windows-v1.1.0-x64
+          name: windows-v${{ steps.build.outputs.version }}-x64
           path: ${{ runner.temp }}/wheres-my-meme-windows/release/*
           if-no-files-found: error
       - name: Upload test evidence

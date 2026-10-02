@@ -1,11 +1,13 @@
-# Windows 1.1.0 本地测试版
+# Windows 1.0.0 本地测试版
 
 Windows 版保留 Android 1.0.0 的分批识别、缓存续做、失败重试、普通文字和正则搜索。文件夹对应相册，原图只读。预览中的操作改为复制图片到系统剪贴板和复制图片的绝对文件路径。
+
+发布 release 或移植已有功能不提升版本号。本次 Windows 版本沿用 Android 的 1.0.0；新增功能时再按项目约定递增版本。
 
 ## 运行与数据
 
 - 系统：Windows 10/11 x64；无需 Python、单独下载 OCR 模型或管理员权限。
-- 程序：`WhereIsMyMeme-1.1.0-windows-x64.exe`，便携单文件，运行库启动时解压到系统临时目录。
+- 程序：`WhereIsMyMeme-1.0.0-windows-x64.exe`，便携单文件，运行库启动时解压到系统临时目录。
 - 数据库：`%LOCALAPPDATA%\WhereIsMyMeme\cache.sqlite3`，记录目录、递归设置、批量数量和识别结果。删除该目录会清除缓存，原图保留。
 - 一次只允许一个应用进程使用缓存。每张保存后更新进度，关闭时等待当前任务结束。
 - 支持 JPEG、PNG、WebP、GIF、BMP、TIFF；动图和多页图片识别首帧，EXIF 旋转会应用。单图上限为 3200 万像素，OCR 输入最大边为 2048 像素。
@@ -41,11 +43,7 @@ PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=desktop QT_QPA_PLATFORM=offscreen \
 
 GitHub Actions 使用 `.github/workflows/windows.yml` 和上述 PowerShell 脚本。冻结程序自验要求使用 `windows` 平台插件，并检查 Windows 剪贴板的原生位图和 Unicode 文本格式；offscreen 验证不会被当作 Windows 系统剪贴板验证。
 
-2026-10-02，原生 Windows 构建机完成 [构建 36974148936](https://github.com/rb-tyz/wheres-my-meme/actions/runs/36974148936)，测试源码提交为 `e38638d88178a507eac9d574d757fca5e4342ebb`。99 项测试通过，4 项 POSIX 权限测试跳过，core/storage/images 覆盖率为 96%。打包后的 EXE 通过 19 项自验，包括离线中文 OCR、缓存重开、RE2 搜索、缩略图、预览、Windows 原生位图与 Unicode 路径剪贴板、线程退出和原图哈希不变。已查看构建机生成的搜索与预览截图，中文显示与布局正常。
-
-固定依赖声明提交 `e42deeb77fdd144b16907719f1e31f49ec938540` 的 [Windows 构建检查](https://github.com/rb-tyz/wheres-my-meme/actions/runs/36975887588) 同样通过。交付 EXE 的 35 项依赖与当前 `requirements.txt` 逐项相符，应用源码和打包脚本与上述编译提交一致。已检查 EXE 的 AMD64 格式、三个 OCR 模型哈希、Python/Qt/ONNX/OpenCV/RE2/VC 运行库及第三方许可文件。
-
-本地交付文件 SHA-256：`97393a21df21ad9cfbeaddebfdd999326f435ed00bb259a64a4a262d8ecefa59`。EXE 和 `SHA256SUMS` 保存在源码目录之外。
+Windows 1.0.0 的 EXE 将重新构建并验证。验收包含程序内的版本号、离线中文 OCR、缓存、搜索、预览、Windows 剪贴板、原图哈希以及内置模型和运行库，交付时补充对应构建和校验和。
 
 当前暂缓公开 release 和 PR，先交付本地 EXE。用户自己的 Windows 电脑和常用聊天软件需要本地测试。
 
