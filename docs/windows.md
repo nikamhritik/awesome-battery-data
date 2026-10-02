@@ -25,7 +25,7 @@ Python 3.12 x64，全部 Python 依赖固定在 `desktop/requirements.txt`。Qt/
 
 2026-10-02，在隔离 Python 3.12 环境运行 103 项测试，全部通过，core/storage/images 的语句覆盖率为 96%。包含 9000 张的九批调度、已完成和空文字跳过、版本变化、失败重试、取消保存当前图片、缓存重开、跨目录搜索、普通文字与 RE2、图片解码、数据库并发、快速翻页和 Qt 界面退出。
 
-源码自验使用合成中文图片和空白图片，识别出“猫猫今天开心”和“MEME 2026”，验证缓存重开与跳过、搜索、缩略图、预览、图片及路径复制、线程退出和原图哈希不变。Linux 端的 Qt 自验使用 offscreen 插件。9000 条测试验证调度和缓存逻辑，未测量 9000 张真实图片的 OCR 耗时或准确率。
+源码自验使用合成中文图片和空白图片，识别出“猫猫今天开心”等文字，验证缓存重开与跳过、搜索、缩略图、预览、图片及路径复制、线程退出和原图哈希不变。Linux 端的 Qt 自验使用 offscreen 插件。9000 条测试验证调度和缓存逻辑，未测量 9000 张真实图片的 OCR 耗时或准确率。
 
 ```bash
 PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=desktop QT_QPA_PLATFORM=offscreen \
@@ -42,6 +42,10 @@ PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=desktop QT_QPA_PLATFORM=offscreen \
 GitHub Actions 使用 `.github/workflows/windows.yml` 和上述 PowerShell 脚本。冻结程序自验要求使用 `windows` 平台插件，并检查 Windows 剪贴板的原生位图和 Unicode 文本格式；offscreen 验证不会被当作 Windows 系统剪贴板验证。
 
 2026-10-02，原生 Windows 构建机完成 [构建 36974148936](https://github.com/rb-tyz/wheres-my-meme/actions/runs/36974148936)，测试源码提交为 `e38638d88178a507eac9d574d757fca5e4342ebb`。99 项测试通过，4 项 POSIX 权限测试跳过，core/storage/images 覆盖率为 96%。打包后的 EXE 通过 19 项自验，包括离线中文 OCR、缓存重开、RE2 搜索、缩略图、预览、Windows 原生位图与 Unicode 路径剪贴板、线程退出和原图哈希不变。已查看构建机生成的搜索与预览截图，中文显示与布局正常。
+
+固定依赖声明提交 `e42deeb77fdd144b16907719f1e31f49ec938540` 的 [Windows 构建检查](https://github.com/rb-tyz/wheres-my-meme/actions/runs/36975887588) 同样通过。交付 EXE 的 35 项依赖与当前 `requirements.txt` 逐项相符，应用源码和打包脚本与上述编译提交一致。已检查 EXE 的 AMD64 格式、三个 OCR 模型哈希、Python/Qt/ONNX/OpenCV/RE2/VC 运行库及第三方许可文件。
+
+本地交付文件 SHA-256：`97393a21df21ad9cfbeaddebfdd999326f435ed00bb259a64a4a262d8ecefa59`。EXE 和 `SHA256SUMS` 保存在源码目录之外。
 
 当前暂缓公开 release 和 PR，先交付本地 EXE。用户自己的 Windows 电脑和常用聊天软件需要本地测试。
 
