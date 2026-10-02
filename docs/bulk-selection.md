@@ -32,6 +32,12 @@ PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=desktop QT_QPA_PLATFORM=offscreen \
 
 Windows 原生构建使用 `scripts/build-windows.ps1`。冻结程序自验增加了两张原图的文件列表复制，并通过 Windows `CF_HDROP` 和 `DragQueryFileW` 读取实际剪贴板文件数量与路径。Linux offscreen 自验只验证 Qt 行为。
 
+2026-10-03，[Windows 构建 37034868142](https://github.com/rb-tyz/wheres-my-meme/actions/runs/37034868142) 在 `windows-2022` 验证提交 `eebe682243d3a192c3020dc355dcc7ec5fb7e22c`：114 项测试通过，4 项 POSIX 专用权限测试跳过，覆盖率 96%，selection 模块 100%。打包后的 `1.1.0` EXE 使用 Windows 平台插件，26 项自验全部通过，包括单图片数据、路径文本、多图文件列表、原生 `CF_HDROP` 文件数量和路径、关闭线程和原图哈希不变。批量选择截图已检查。后续 Android 查询恢复修正未改变本次验证的 Windows 源码。
+
+交付 `WhereIsMyMeme-1.1.0-windows-x64.exe`：144,665,588 字节，SHA-256 `33bde76be619940d1aaf4815df373b13842adce9019de73d863f12545398ea62`。GitHub ZIP 摘要 `7fd317458cc15e297a60579db3db756fdcaf3ccec724826965101474e17e26ff`、ZIP CRC、包内 EXE 校验和和 PE x64 格式均已核对；校验和随测试包保存在 `artifacts/SHA256SUMS-windows-x64`。
+
+新增纯选择逻辑的测试行数超过实现行数。原生 Android 控件与生命周期使用编译检查和真机验收，Qt 控件与 Windows 剪贴板使用上述界面测试和冻结程序自验。
+
 ## 真实环境验收
 
 Mate 60 Pro 和用户 Windows 电脑尚待测试；本次未进行 Android 模拟器验证。建议验收以下使用过程：
@@ -49,3 +55,5 @@ Mate 60 Pro 和用户 Windows 电脑尚待测试；本次未进行 Android 模�
 只读平台调查：`ses_f02b2cd0cffem9upyHbfmW5I4r`。环境准备：`ses_f02ad4e67ffeXD2RaodoluMVU5`，提供独立临时 JDK 17、SDK 35、build-tools 34.0.0 和已校验的 Gradle 8.9。初版实现会话 `ses_f02ad4e6effe9xQlRbXUjPL3Mw` 的选择模型由主代理重写；停止已获服务端确认，主代理随后接管实现和验证。
 
 源码复审会话 `ses_f0296640bffema0Tlni2Ir1kmF` 只读检查两端选择、生命周期、批量操作和测试，未发现可证实的代码问题。复审未运行测试；Android 界面恢复和接收应用兼容性仍由设备验收。
+
+CI 获取会话 `ses_f0285a213ffeGIRY4VHj4IsiXd` 核对构建状态，但未在时限内完成大文件下载；服务端确认已停止。主代理另行下载原生验证记录，检查截图，并使用分段下载获取 EXE。
