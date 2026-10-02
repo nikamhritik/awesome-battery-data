@@ -23,7 +23,7 @@ Python 3.12 x64，全部 Python 依赖固定在 `desktop/requirements.txt`。Qt/
 
 ## 已执行的源码验证
 
-2026-10-02，在隔离 Python 3.12 环境运行 102 项测试，全部通过，core/storage/images 的语句覆盖率为 96%。包含 9000 张的九批调度、已完成和空文字跳过、版本变化、失败重试、取消保存当前图片、缓存重开、跨目录搜索、普通文字与 RE2、图片解码、数据库并发和 Qt 界面退出。
+2026-10-02，在隔离 Python 3.12 环境运行 103 项测试，全部通过，core/storage/images 的语句覆盖率为 96%。包含 9000 张的九批调度、已完成和空文字跳过、版本变化、失败重试、取消保存当前图片、缓存重开、跨目录搜索、普通文字与 RE2、图片解码、数据库并发、快速翻页和 Qt 界面退出。
 
 源码自验使用合成中文图片和空白图片，识别出“猫猫今天开心”和“MEME 2026”，验证缓存重开与跳过、搜索、缩略图、预览、图片及路径复制、线程退出和原图哈希不变。Linux 端的 Qt 自验使用 offscreen 插件。9000 条测试验证调度和缓存逻辑，未测量 9000 张真实图片的 OCR 耗时或准确率。
 
@@ -41,10 +41,12 @@ PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=desktop QT_QPA_PLATFORM=offscreen \
 
 GitHub Actions 使用 `.github/workflows/windows.yml` 和上述 PowerShell 脚本。冻结程序自验要求使用 `windows` 平台插件，并检查 Windows 剪贴板的原生位图和 Unicode 文本格式；offscreen 验证不会被当作 Windows 系统剪贴板验证。
 
-Windows 构建结果将在交付前核对；当前暂缓公开 release，先供用户本地测试。用户自己的 Windows 电脑和常用聊天软件需要本地测试。
+2026-10-02，原生 Windows 构建机完成 [构建 36974148936](https://github.com/rb-tyz/wheres-my-meme/actions/runs/36974148936)，测试源码提交为 `e38638d88178a507eac9d574d757fca5e4342ebb`。99 项测试通过，4 项 POSIX 权限测试跳过，core/storage/images 覆盖率为 96%。打包后的 EXE 通过 19 项自验，包括离线中文 OCR、缓存重开、RE2 搜索、缩略图、预览、Windows 原生位图与 Unicode 路径剪贴板、线程退出和原图哈希不变。已查看构建机生成的搜索与预览截图，中文显示与布局正常。
+
+当前暂缓公开 release 和 PR，先交付本地 EXE。用户自己的 Windows 电脑和常用聊天软件需要本地测试。
 
 ## 测试与协作范围
 
 纯逻辑测试行数超过 core/storage/images/ocr 的源码行数，覆盖边界和失败路径；Qt 控件布局、平台入口及构建脚本通过界面和冻结程序自验验证。POSIX chmod 权限测试只适用于 Linux，Windows 使用模拟权限丢失验证停止与保存逻辑。
 
-缓存及测试的初版由独立工作树代理 `ses_f04cdfc20ffePE4G1Oft5rrknc` 提供，主代理完成接口修正、界面、打包与交付验证。打包只读审查会话为 `ses_f04d53cf3ffe4ll7AUu8lOHcFq`。
+缓存及测试的初版由独立工作树代理 `ses_f04cdfc20ffePE4G1Oft5rrknc` 提供，主代理完成接口修正、界面、打包与交付验证。打包只读审查会话为 `ses_f04d53cf3ffe4ll7AUu8lOHcFq`。界面与原生依赖审查会话 `ses_f04bf81c5ffeUBFQkzbwjdxJJz` 找出了翻页时的事件队列竞态，已修复并增加回归测试。
