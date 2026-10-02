@@ -1,12 +1,12 @@
 # Where's My Meme
 
-A lightweight, fully local Android app for finding saved memes, with no server to deploy. It reads a local album, recognizes and saves the text in each image, and lets you search for memes by that text.
+A fully local app for finding saved memes on Android and Windows. It reads an album or folder, recognizes and saves the text in each image, and lets you search for memes by that text. No server is needed.
 
-[简体中文](README-zh_cn.md) · [Download APK](https://github.com/rb-tyz/wheres-my-meme/releases/download/v1.0.0/MemeOCR-1.0.0.apk) · [Verification record](docs/verification.md)
+[简体中文](README-zh_cn.md) · [Windows EXE](https://github.com/rb-tyz/wheres-my-meme/releases/download/v1.0.0/WhereIsMyMeme-1.0.0-windows-x64.exe) · [Android APK](https://github.com/rb-tyz/wheres-my-meme/releases/download/v1.0.0/MemeOCR-1.0.0.apk) · [Windows instructions](docs/windows.md)
 
-- **Fully local**: The OCR model is bundled with the APK. Recognition, caching and search all run on your phone, without an Internet connection or image uploads.
-- **Lightweight**: Built with Kotlin and native Android UI, the app processes images in batches, reuses saved recognition results, and limits memory use for image decoding and thumbnail caching.
-- **No deployment needed**: Install the APK and grant photo access to get started. There is no server to set up or cloud service to configure.
+- **Fully local**: Both downloads include a Chinese OCR model. Recognition, caching and search work without an Internet connection or image uploads.
+- **Batch processing**: Saved results are reused, with bounded image decoding and thumbnail caching.
+- **No server to set up**: Install the Android APK or open the portable Windows executable.
 
 ## Background
 
@@ -18,11 +18,37 @@ Then Astra came to the rescue and helped me write this app. And by "helped," I m
 
 ## Release and compatibility
 
-Version 1.0.0 is a signed, non-debuggable APK, approximately 44.2 MiB. It supports Android 8.0 / API 26 and later.
+Windows 1.0.0 is a portable executable for Windows 10/11 x64. A release or a port of existing features does not change the application version. It includes Python, Qt, the Chinese OCR models and the required runtime libraries. You do not need to install Python or download a model. Its first launch extracts runtime files into the system temporary directory.
 
-The app has been tested on an Android 11 AOSP emulator without Google Play services and with networking disabled, and on a Huawei Mate 60 Pro.
+Android 1.0.0 is a signed, non-debuggable APK, approximately 44.2 MiB. It supports Android 8.0 / API 26 and later.
 
-## Install and use
+The Android app has been tested on an Android 11 AOSP emulator without Google Play services and with networking disabled, and on a Huawei Mate 60 Pro. Windows build and verification details are in [docs/windows.md](docs/windows.md).
+
+## Use on Windows
+
+1. Download [WhereIsMyMeme-1.0.0-windows-x64.exe](https://github.com/rb-tyz/wheres-my-meme/releases/download/v1.0.0/WhereIsMyMeme-1.0.0-windows-x64.exe) from Releases and open it by double-clicking it. No installer or administrator access is needed.
+2. On **识别相册**, click **选择文件夹**. Enable **包含子文件夹** if your memes are stored in nested folders.
+3. Choose a batch size, then click **开始识别本批**. The default is 1,000 images; the range is 1–10,000. **停止本批** saves the current image before stopping. Start again to continue, or use **重试本相册失败项** to retry failures.
+4. On **搜索图片**, enter text and click **查找图片**. Results span all registered folders. **正则模式** supports the same RE2 syntax described below.
+5. Click a result to preview it. **复制到剪贴板** copies image data for pasting into another app; **复制图片所在路径** copies its absolute file path.
+
+Original images are read-only. The cache is stored in `%LOCALAPPDATA%\WhereIsMyMeme\cache.sqlite3`. Completed images, including those with no text, are skipped until their size or modification time changes. Closing the window waits for active work to finish; each completed result is already saved.
+
+Windows uses RapidOCR's bundled Chinese PP-OCRv4 models; Android uses ML Kit. Their recognition results may differ. Animated images use the first frame. Copying the path preserves access to the original animated file.
+
+## Build the Windows executable
+
+Use Python 3.12 x64 on Windows and PowerShell. The first build needs an Internet connection for the pinned dependencies.
+
+```powershell
+./scripts/build-windows.ps1 -OutputDir "$env:TEMP/wheres-my-meme-windows"
+```
+
+The script rejects output directories inside the checkout. Its virtual environment, caches, work files, executable, checksums and test reports are written under `OutputDir`. It runs the unit/UI tests, packages a single executable, then tests that executable with real Chinese OCR and the native Windows clipboard. GitHub Actions uses the same script on `windows-2022`.
+
+The desktop source is in `desktop/`. [Windows verification](docs/windows.md) records the tested scope. [Third-party notices](desktop/THIRD_PARTY_NOTICES.txt) and original dependency licenses are also included in the executable.
+
+## Use on Android
 
 1. Copy [MemeOCR-1.0.0.apk](https://github.com/rb-tyz/wheres-my-meme/releases/download/v1.0.0/MemeOCR-1.0.0.apk) to the phone and open it with the system package installer. Allow installation from the file-opening app if the system asks.
 2. Open **Meme 文字搜索** and grant photo access. The app only lists photos it is permitted to read. Notification permission allows progress to appear in the notification area.
