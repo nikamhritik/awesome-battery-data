@@ -1,8 +1,10 @@
 import threading
 import time
+from dataclasses import replace
 
 import pytest
 from PIL import Image
+from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QApplication, QPushButton, QTextEdit
 
 from memeocr.core import canonical_path, stat_item
@@ -73,6 +75,7 @@ def test_search_thumbnails_preview_and_both_clipboard_actions(app, window):
     image = app.clipboard().image()
     assert image.width() == 100 and image.height() == 80
     assert image.pixelColor(0, 0).red() == 255
+    assert not app.clipboard().mimeData().hasUrls()
     buttons["复制图片所在路径"].click()
     wait(app, lambda: not window.jobs)
     assert app.clipboard().text() == window.hits[0].path
@@ -137,3 +140,23 @@ def test_rapid_paging_remains_bounded(app, window):
     assert window.results.count() == 48
     assert len(window.thumbnail_cache) <= 96
     assert window.page == 0
+
+
+def test_page_change_after_thread_ends_before_events_are_delivered(app, window):
+    record = window.store.records()[0]
+    window.hits = [replace(record, text=f"page {page}")
+                   for page in range(3) for _ in range(48)]
+    window.show_page(0)
+    completed = window.page_job
+    assert completed.wait(5000)
+    assert completed.isFinished()
+    assert window.page_job is completed
+    window.show_page(2)
+    wait(app, lambda: not window.jobs)
+    assert window.page == 2
+    assert window.page_job is None
+    assert window.results.count() == 48
+    for index in range(48):
+        item = window.results.item(index)
+        assert item.data(Qt.ItemDataRole.UserRole).text == "page 2"
+        assert not item.icon().isNull()

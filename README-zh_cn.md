@@ -33,7 +33,7 @@ Android 已在没有 Google Play 服务、关闭网络的 Android 11 AOSP 模拟
 
 原图只读，缓存保存在 `%LOCALAPPDATA%\WhereIsMyMeme\cache.sqlite3`。已成功处理的图片（包括没有文字的图片）会跳过，文件大小或修改时间变化后重新识别。退出时等待正在执行的任务结束，每张已完成的结果都已保存。
 
-Windows 使用 RapidOCR 内置的中文 PP-OCRv4 模型，Android 使用 ML Kit，两者识别结果可能不同。动图识别及剪贴板图片数据使用首帧；剪贴板同时提供原文件引用，接收软件会选择粘贴图片或文件。复制路径可用于找到原始动图。
+Windows 使用 RapidOCR 内置的中文 PP-OCRv4 模型，Android 使用 ML Kit，两者识别结果可能不同。动图识别及剪贴板图片数据使用首帧。复制路径可用于找到原始动图。
 
 ## 构建 Windows EXE
 

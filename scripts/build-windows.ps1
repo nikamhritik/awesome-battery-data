@@ -63,7 +63,6 @@ try {
     $Re2Libraries = Join-Path $SitePackages 'google_re2.libs'
     if (Test-Path $Re2Libraries) {
         $PackArguments += @('--add-binary', "$Re2Libraries/*.dll;google_re2.libs")
-        $PackArguments += @('--add-data', "$Re2Libraries/*;google_re2.libs")
     }
     $PackArguments += (Join-Path $RepoRoot 'desktop/launcher.py')
     Invoke-TaskPython $PackArguments

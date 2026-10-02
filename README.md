@@ -34,7 +34,7 @@ The Android app has been tested on an Android 11 AOSP emulator without Google Pl
 
 Original images are read-only. The cache is stored in `%LOCALAPPDATA%\WhereIsMyMeme\cache.sqlite3`. Completed images, including those with no text, are skipped until their size or modification time changes. Closing the window waits for active work to finish; each completed result is already saved.
 
-Windows uses RapidOCR's bundled Chinese PP-OCRv4 models; Android uses ML Kit. Their recognition results may differ. Animated images use the first frame. The clipboard also carries the original file reference, so the receiving app chooses whether to paste image pixels or a file. Copying the path preserves access to the original animated file.
+Windows uses RapidOCR's bundled Chinese PP-OCRv4 models; Android uses ML Kit. Their recognition results may differ. Animated images use the first frame. Copying the path preserves access to the original animated file.
 
 ## Build the Windows executable
 

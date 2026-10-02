@@ -4,7 +4,7 @@ import threading
 from collections import OrderedDict
 from pathlib import Path
 
-from PySide6.QtCore import QMimeData, QSize, Qt, QThread, QTimer, QUrl, Signal
+from PySide6.QtCore import QMimeData, QSize, Qt, QThread, QTimer, Signal
 from PySide6.QtGui import QIcon, QPixmap
 from PySide6.QtWidgets import (
     QApplication, QCheckBox, QComboBox, QDialog, QFileDialog, QHBoxLayout,
@@ -48,10 +48,9 @@ def validated_image(record, max_side=2048):
     return image
 
 
-def copy_image(record, image):
+def copy_image(image):
     mime = QMimeData()
     mime.setImageData(image)
-    mime.setUrls([QUrl.fromLocalFile(record.path)])
     QApplication.clipboard().setMimeData(mime)
 
 
@@ -105,7 +104,7 @@ class MainWindow(QMainWindow):
         self.recursive.toggled.connect(self._recursion_changed)
         QTimer.singleShot(0, self.refresh_album)
 
-    def _job(self, function, success, *, progress=None, failure=None):
+    def _job(self, function, success, *, progress=None, failure=None, finished=None):
         job = Job(function, self)
         self.jobs.add(job)
         job.result.connect(lambda value: None if self.closing else success(value))
@@ -113,6 +112,8 @@ class MainWindow(QMainWindow):
                             (failure or self.show_error)(message))
         if progress:
             job.progress.connect(lambda value: None if self.closing else progress(value))
+        if finished:
+            job.finished.connect(finished)
         job.finished.connect(lambda: self._job_finished(job))
         job.start()
         return job
@@ -367,8 +368,6 @@ class MainWindow(QMainWindow):
         generation = self.page_generation
         if self.page_job:
             self.page_job.cancel.set()
-            # One thumbnail job at a time; a later page waits for the old job to stop.
-            self.page_job.finished.connect(lambda: self._render_page(generation))
         else:
             self._render_page(generation)
         self.previous.setEnabled(self.page > 0)
@@ -403,7 +402,6 @@ class MainWindow(QMainWindow):
                     continue
             return decoded
         def loaded(decoded):
-            self.page_job = None
             if generation != self.page_generation:
                 return
             for index, key, image in decoded:
@@ -414,7 +412,12 @@ class MainWindow(QMainWindow):
                 item = self.results.item(index)
                 if item:
                     item.setIcon(QIcon(QPixmap.fromImage(image)))
-        self.page_job = self._job(thumbnails, loaded, failure=lambda _: setattr(self, "page_job", None))
+        def finished():
+            self.page_job = None
+            if generation != self.page_generation:
+                self._render_page(self.page_generation)
+        # Connect before starting: finished can already be queued when the user turns a page.
+        self.page_job = self._job(thumbnails, loaded, failure=lambda _: None, finished=finished)
 
     def preview(self, item):
         if self.preview_job:
@@ -468,7 +471,7 @@ class MainWindow(QMainWindow):
             if not shiboken6.isValid(dialog):
                 return
             if is_image:
-                copy_image(record, value)
+                copy_image(value)
             else:
                 QApplication.clipboard().setText(value.path)
             status.setText("已复制图片。" if is_image else "已复制图片所在路径。")
