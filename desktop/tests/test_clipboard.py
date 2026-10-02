@@ -107,6 +107,7 @@ def test_windows_png_registration_contains_the_actual_png(app, monkeypatch):
     mime = app.clipboard().mimeData()
     assert bytes(mime.data(clipboard.WINDOWS_PNG_MIME)) == payload.png
     assert mime.hasFormat('image/png')
+    assert bytes(mime.data(clipboard.WINDOWS_HTML_MIME)).decode('utf-8') == payload.html
 
 
 def test_linux_file_transfer_flavor_escapes_spaces_unicode_and_delimiters(app, monkeypatch):

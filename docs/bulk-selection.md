@@ -37,6 +37,10 @@ Windows 原生构建使用 `scripts/build-windows.ps1`。冻结程序自验读�
 
 初版 `WhereIsMyMeme-1.1.0-windows-x64.exe`：144,665,588 字节，SHA-256 `33bde76be619940d1aaf4815df373b13842adce9019de73d863f12545398ea62`。GitHub ZIP 摘要 `7fd317458cc15e297a60579db3db756fdcaf3ccec724826965101474e17e26ff`、ZIP CRC、包内 EXE 校验和和 PE x64 格式曾核对通过。
 
+图片粘贴修正的 [Windows 构建 37045918302](https://github.com/rb-tyz/wheres-my-meme/actions/runs/37045918302) 验证提交 `bab64d7`：142 项测试通过、4 项平台相关测试跳过，clipboard 模块覆盖率 100%；冻结 EXE 的 38 项自验通过。该包的 SHA-256 为 `36ae997e44a857ee938ecd27017cf00c8e53e8974ca5f44e2dc331ab395770eb`。
+
+随后在桌面共享显示会话 `:0` 进行 Wine 跨程序测试：PNG 已传到桌面，但接收端未得到标准 `text/html`，只看到 Windows 的 HTML Format，因此富文本粘贴退回路径。后续代码补充 UTF-8 的注册 `text/html` 格式；46 项相关测试通过。这个补充需要重新构建 EXE 并复验 Wine 与 QQ，当前本地 EXE 仍为上述 `bab64d7` 测试包。
+
 新增纯选择逻辑的测试行数超过实现行数。原生 Android 控件与生命周期使用编译检查和真机验收，Qt 控件与 Windows 剪贴板使用上述界面测试和冻结程序自验。
 
 ## 真实环境验收

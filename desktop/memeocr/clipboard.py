@@ -10,6 +10,7 @@ from PySide6.QtWidgets import QApplication
 
 MAX_CLIPBOARD_BYTES = 64 * 1024 * 1024
 WINDOWS_PNG_MIME = 'application/x-qt-windows-mime;value="PNG"'
+WINDOWS_HTML_MIME = 'application/x-qt-windows-mime;value="text/html"'
 _HTML_START = '<html><head><meta charset="utf-8"></head><body><!--StartFragment-->'
 _HTML_END = '<!--EndFragment--></body></html>'
 
@@ -74,6 +75,9 @@ def publish_images(payload):
             # Wine maps the registered Windows PNG format to the desktop image/png target.
             mime.setData(WINDOWS_PNG_MIME, payload.png)
     mime.setHtml(payload.html)
+    if os.name == 'nt':
+        # Keep native CF_HTML, and also offer UTF-8 HTML to Wine's MIME-based bridge.
+        mime.setData(WINDOWS_HTML_MIME, payload.html.encode('utf-8'))
     if len(payload.paths) > 1:
         urls = [QUrl.fromLocalFile(path) for path in payload.paths]
         mime.setUrls(urls)
