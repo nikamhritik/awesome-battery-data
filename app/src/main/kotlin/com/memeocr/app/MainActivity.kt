@@ -61,6 +61,8 @@ class MainActivity : Activity() {
     private var sharing = false
     @Volatile private var shareGeneration = 0
     private var hasSearched = false
+    private var resultQuery: String? = null
+    private var resultRegex = false
     private var restoredKeys: List<String>? = null
     private var refreshingKeys = emptyList<String>()
     private data class RetainedSelection(val keys: List<String>)
@@ -96,6 +98,8 @@ class MainActivity : Activity() {
             regex.isChecked = it.getBoolean("regex")
             searchVisible = it.getBoolean("searchVisible")
             hasSearched = it.getBoolean("hasSearched")
+            resultQuery = it.getString("resultQuery")
+            resultRegex = it.getBoolean("resultRegex")
             bulkMode = it.getBoolean("bulkMode")
         }
         restoredKeys = (lastNonConfigurationInstance as? RetainedSelection)?.keys
@@ -392,12 +396,14 @@ class MainActivity : Activity() {
         selection.replaceResults(emptyList())
         if (!restoring) bulkMode = false
         adapter.hits = emptyList(); adapter.notifyDataSetChanged(); updateSelection()
-        val query = searchInput.text.toString()
+        val query = if (restoring) resultQuery ?: searchInput.text.toString() else searchInput.text.toString()
+        val regexMode = if (restoring) resultRegex else regex.isChecked
+        if (!restoring) { resultQuery = query; resultRegex = regexMode }
         if (query.isBlank()) {
             hasSearched = false; resultText.text = "请输入要找的文字。"; return
         }
         hasSearched = true
-        val mode = if (regex.isChecked) SearchMode.Regex(query) else SearchMode.Literal(query)
+        val mode = if (regexMode) SearchMode.Regex(query) else SearchMode.Literal(query)
         if (mode is SearchMode.Regex && RegexSearch.validate(query).isFailure) {
             resultText.text = RegexSearch.validate(query).exceptionOrNull()?.message
             return
@@ -556,6 +562,8 @@ class MainActivity : Activity() {
         state.putBoolean("regex", regex.isChecked)
         state.putBoolean("searchVisible", searchVisible)
         state.putBoolean("hasSearched", hasSearched)
+        state.putString("resultQuery", resultQuery)
+        state.putBoolean("resultRegex", resultRegex)
         state.putBoolean("bulkMode", bulkMode)
         super.onSaveInstanceState(state)
     }
