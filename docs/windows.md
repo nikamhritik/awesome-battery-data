@@ -43,7 +43,9 @@ PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=desktop QT_QPA_PLATFORM=offscreen \
 
 GitHub Actions 使用 `.github/workflows/windows.yml` 和上述 PowerShell 脚本。冻结程序自验要求使用 `windows` 平台插件，并检查 Windows 剪贴板的原生位图和 Unicode 文本格式；offscreen 验证不会被当作 Windows 系统剪贴板验证。
 
-Windows 1.0.0 的 EXE 将重新构建并验证。验收包含程序内的版本号、离线中文 OCR、缓存、搜索、预览、Windows 剪贴板、原图哈希以及内置模型和运行库，交付时补充对应构建和校验和。
+2026-10-02，[Windows 构建 36978937846](https://github.com/rb-tyz/wheres-my-meme/actions/runs/36978937846) 验证提交 `9d8df7549be7937568d20e09c08afc7af95a66e7`。99 项测试通过，4 项 POSIX 专用权限测试跳过；冻结程序使用 Windows 平台插件，19 项自验全部通过，程序内版本为 `1.0.0`。自验覆盖离线中文 OCR、缓存、搜索、预览、Windows 剪贴板位图与路径文本、原图哈希不变和阻断网络后的运行。搜索与预览截图已检查。
+
+`WhereIsMyMeme-1.0.0-windows-x64.exe` 为 144,661,004 字节，SHA-256 为 `3e2e3d6c46af80f00bd274d0dac7f2d6bb7ec4e5a723e2906dc8641c57c7d782`。下载包与 GitHub 记录的摘要一致，EXE 与随附 `SHA256SUMS` 一致。内嵌构建信息的版本、三个 OCR 模型的哈希、Windows x64 格式、运行库和许可文件均已核对。
 
 当前暂缓公开 release 和 PR，先交付本地 EXE。用户自己的 Windows 电脑和常用聊天软件需要本地测试。
 
