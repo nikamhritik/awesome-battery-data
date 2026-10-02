@@ -64,6 +64,7 @@ def self_test(report_path, app):
             folder.mkdir()
             source = folder / "猫猫.png"
             shutil.copyfile(Path(__file__).parent / "assets" / "ocr-fixture.png", source)
+            shutil.copyfile(source, folder / "猫猫 2.png")
             Image.new("RGB", (240, 160), "white").save(folder / "empty.png")
             before = {p.name: hashlib.sha256(p.read_bytes()).hexdigest() for p in folder.iterdir()}
             store = Store(Path(temp) / "cache.sqlite3")
@@ -74,15 +75,15 @@ def self_test(report_path, app):
             items = scan_folder(root)
             engine = Recognizer()
             progress = run_batch(select_batch(items, [], 1000), store, engine, threading.Event())
-            check("offline_chinese_ocr", progress.succeeded == 1 and progress.empty == 1 and progress.failed == 0)
+            check("offline_chinese_ocr", progress.succeeded == 2 and progress.empty == 1 and progress.failed == 0)
             records = store.records()
             report["recognized_text"] = [record.text for record in records if record.text]
             check("chinese_words", any("猫猫" in record.text and "开心" in record.text for record in records))
             check("completed_and_empty_skipped", not select_batch(items, records, 1000))
             reopened = Store(Path(temp) / "cache.sqlite3")
-            check("cache_survives_reopen", len(reopened.records()) == 2)
-            check("literal_search", len(search_records(reopened, "猫猫")) == 1)
-            check("re2_search", len(search_records(reopened, "猫|狗", True)) == 1)
+            check("cache_survives_reopen", len(reopened.records()) == 3)
+            check("literal_search", len(search_records(reopened, "猫猫")) == 2)
+            check("re2_search", len(search_records(reopened, "猫|狗", True)) == 2)
             try:
                 search_records(reopened, "(?=猫)", True)
             except ValueError:
@@ -98,11 +99,13 @@ def self_test(report_path, app):
             window.query.setText("猫猫")
             window.search()
             wait_for(lambda: not window.jobs)
-            check("ui_search_and_thumbnail", window.results.count() == 1 and
+            check("ui_search_and_thumbnail", window.results.count() == 2 and
                   not window.results.item(0).icon().isNull() and not errors)
             screenshot = report_path.parent / "windows-search.png"
             check("search_screenshot", window.grab().save(str(screenshot)))
-            window.preview(window.results.item(0))
+            preview_item = next(window.results.item(index) for index in range(window.results.count())
+                                if window.hits[index].path == canonical_path(source))
+            window.preview(preview_item)
             wait_for(lambda: not window.jobs and window.preview_dialog is not None)
             dialog = window.preview_dialog
             check("preview_screenshot", dialog.grab().save(str(report_path.parent / "windows-preview.png")))
@@ -123,6 +126,39 @@ def self_test(report_path, app):
             if os.name == "nt":
                 check("native_clipboard_unicode_text", bool(native.IsClipboardFormatAvailable(13)))
             dialog.close()
+            window.bulk_button.click()
+            window.select_all_button.click()
+            check("bulk_selection_count", len(window.selection) == 2)
+            check("bulk_selection_screenshot", window.grab().save(str(report_path.parent / "windows-bulk-selection.png")))
+            expected_paths = [record.path for record in window.selection.selected_records()]
+            window.copy_selected_button.click()
+            wait_for(lambda: not window.jobs)
+            check("clipboard_multiple_files", [canonical_path(url.toLocalFile())
+                  for url in app.clipboard().mimeData().urls()] == expected_paths)
+            if os.name == "nt":
+                from ctypes import c_void_p, c_uint, c_wchar_p
+
+                check("native_clipboard_hdrop", bool(native.IsClipboardFormatAvailable(15)))
+                native.GetClipboardData.restype = c_void_p
+                shell = ctypes.windll.shell32
+                shell.DragQueryFileW.argtypes = [c_void_p, c_uint, c_wchar_p, c_uint]
+                shell.DragQueryFileW.restype = c_uint
+                check("native_clipboard_open", bool(native.OpenClipboard(None)))
+                try:
+                    handle = native.GetClipboardData(15)
+                    count = shell.DragQueryFileW(handle, 0xFFFFFFFF, None, 0)
+                    paths = []
+                    for index in range(count):
+                        length = shell.DragQueryFileW(handle, index, None, 0)
+                        buffer = ctypes.create_unicode_buffer(length + 1)
+                        shell.DragQueryFileW(handle, index, buffer, length + 1)
+                        paths.append(canonical_path(buffer.value))
+                    check("native_clipboard_original_files", paths == expected_paths)
+                finally:
+                    native.CloseClipboard()
+            window.clear_selection_button.click()
+            check("bulk_clear_disables_copy", len(window.selection) == 0 and
+                  not window.copy_selected_button.isEnabled())
             release = threading.Event()
             entered = threading.Event()
             def current_job(job):
@@ -151,5 +187,9 @@ def self_test(report_path, app):
                 report["shutdown_error"] = traceback.format_exc()
         socket.socket.connect, socket.socket.connect_ex = original_connect, original_connect_ex
         socket.getaddrinfo = original_resolve
+        # These clipboard URLs point to temporary fixtures, not user images.
+        # Release the Qt-owned MIME object before QApplication is torn down.
+        app.clipboard().clear()
+        app.processEvents()
         report_path.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
     return 0 if report["success"] else 1

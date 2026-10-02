@@ -6,6 +6,12 @@ cd "$project_dir"
 : "${ANDROID_HOME:?Set ANDROID_HOME to your Android SDK installation}"
 gradle_cmd="${GRADLE_BIN:-$project_dir/gradlew}"
 tools_dir="$ANDROID_HOME/build-tools/34.0.0"
+app_version="$(sed -n 's/^[[:space:]]*versionName = "\([^"]*\)"/\1/p' app/build.gradle.kts)"
+if [[ ! "$app_version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+  echo "Unable to read application version from app/build.gradle.kts" >&2
+  exit 1
+fi
+apk_path="artifacts/MemeOCR-$app_version.apk"
 "$gradle_cmd" --no-daemon --max-workers=2 :core:test :app:lintRelease :app:assembleRelease
 mkdir -p .signing artifacts
 chmod 700 .signing
@@ -24,17 +30,17 @@ fi
 "$tools_dir/zipalign" -f -p 4 app/build/outputs/apk/release/app-release-unsigned.apk artifacts/aligned.apk
 "$JAVA_HOME/bin/java" -jar "$tools_dir/lib/apksigner.jar" sign --ks .signing/release.jks --ks-key-alias meme-ocr \
   --ks-pass file:.signing/password \
-  --out artifacts/MemeOCR-1.0.0.apk artifacts/aligned.apk
+  --out "$apk_path" artifacts/aligned.apk
 rm artifacts/aligned.apk
-"$JAVA_HOME/bin/java" -jar "$tools_dir/lib/apksigner.jar" verify --verbose artifacts/MemeOCR-1.0.0.apk
-"$tools_dir/aapt2" dump permissions artifacts/MemeOCR-1.0.0.apk > artifacts/permissions.txt
+"$JAVA_HOME/bin/java" -jar "$tools_dir/lib/apksigner.jar" verify --verbose "$apk_path"
+"$tools_dir/aapt2" dump permissions "$apk_path" > artifacts/permissions.txt
 if grep -Eq 'android.permission.(INTERNET|ACCESS_NETWORK_STATE|WRITE_EXTERNAL_STORAGE|MANAGE_EXTERNAL_STORAGE)' artifacts/permissions.txt; then
   echo "Unexpected network or image-write permission in APK" >&2
   exit 1
 fi
-if "$tools_dir/aapt2" dump badging artifacts/MemeOCR-1.0.0.apk | grep -q application-debuggable; then
+if "$tools_dir/aapt2" dump badging "$apk_path" | grep -q application-debuggable; then
   echo "Release APK unexpectedly debuggable" >&2
   exit 1
 fi
-(cd artifacts && sha256sum MemeOCR-1.0.0.apk > SHA256SUMS)
-echo "Signed APK: artifacts/MemeOCR-1.0.0.apk"
+(cd artifacts && sha256sum "MemeOCR-$app_version.apk" > SHA256SUMS)
+echo "Signed APK: $apk_path"

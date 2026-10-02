@@ -6,6 +6,7 @@ A fully local app for finding saved memes on Android and Windows. It reads an al
 
 - **Fully local**: Both downloads include a Chinese OCR model. Recognition, caching and search work without an Internet connection or image uploads.
 - **Batch processing**: Saved results are reused, with bounded image decoding and thumbnail caching.
+- **Batch selection**: Select several search results, share them on Android or copy the original files on Windows. Selection persists across Windows result pages.
 - **No server to set up**: Install the Android APK or open the portable Windows executable.
 
 ## Background
@@ -17,6 +18,8 @@ I've collected about 9,000 memes so far. I'll be in a chat and think of the perf
 Then Astra came to the rescue and helped me write this app. And by "helped," I mean did the coding while I supplied the vibes.
 
 ## Release and compatibility
+
+The source version is 1.1.0, adding batch selection on both platforms. The download links above point to the published 1.0.0 packages until the new version completes real-device testing. See [batch selection and verification](docs/bulk-selection.md).
 
 Windows 1.0.0 is a portable executable for Windows 10/11 x64. A release or a port of existing features does not change the application version. It includes Python, Qt, the Chinese OCR models and the required runtime libraries. You do not need to install Python or download a model. Its first launch extracts runtime files into the system temporary directory.
 
@@ -31,6 +34,7 @@ The Android app has been tested on an Android 11 AOSP emulator without Google Pl
 3. Choose a batch size, then click **开始识别本批**. The default is 1,000 images; the range is 1–10,000. **停止本批** saves the current image before stopping. Start again to continue, or use **重试本相册失败项** to retry failures.
 4. On **搜索图片**, enter text and click **查找图片**. Results span all registered folders. **正则模式** supports the same RE2 syntax described below.
 5. Click a result to preview it. **复制到剪贴板** copies image data for pasting into another app; **复制图片所在路径** copies its absolute file path.
+6. Click **批量选择**, then click the images you want. **全选结果** selects all search results across pages; **清空选择** clears them. **复制所选到剪贴板** copies the original image files, including animated files, for apps that accept pasted files. **退出选择** returns to preview mode. A new search clears the selection.
 
 Original images are read-only. The cache is stored in `%LOCALAPPDATA%\WhereIsMyMeme\cache.sqlite3`. Completed images, including those with no text, are skipped until their size or modification time changes. Closing the window waits for active work to finish; each completed result is already saved.
 
@@ -56,6 +60,7 @@ The desktop source is in `desktop/`. [Windows verification](docs/windows.md) rec
 4. Tap **开始识别本批**. Each result is saved before progress advances. **停止本批** lets the current image finish and saves it.
 5. Start another batch to continue. Completed, unchanged images—including images with no text—are skipped. Use **重试本相册失败项** to retry failed images in the selected album.
 6. Open **搜索图片**, enter text and tap **查找图片**. Tap a result to preview the original and open Android's share sheet.
+7. Tap **批量选择** or long-press a result to start selecting images. Tap images to select or deselect them, use **全选结果** or **清空选择**, then tap **分享所选** to open the system share sheet with all selected originals. A new search clears the selection. Rotation and returning from the share sheet keep selections whose image versions are still accessible; restarting the process clears them.
 
 Search spans all recognized albums that are still accessible. Images that were deleted, changed or are no longer authorized are excluded from search.
 
