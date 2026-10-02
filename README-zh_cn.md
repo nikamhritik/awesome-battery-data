@@ -1,12 +1,12 @@
 # Where's My Meme
 
-一款纯本地、轻量、无需部署的 Android meme搜索工具。读取本地相册，识别图片中的文字并保存结果，之后输入文字就能查找对应的 meme。
+一款纯本地的 Android 和 Windows meme 搜索工具。读取本地相册或文件夹，识别图片中的文字并保存结果，之后输入文字就能查找对应的 meme，无需部署服务器。
 
-[安装包](https://github.com/rb-tyz/wheres-my-meme/releases/download/v1.0.0/MemeOCR-1.0.0.apk) · [测试记录](docs/verification.md) · [English](README.md)
+[Windows 使用说明](docs/windows.md) · [Android APK](https://github.com/rb-tyz/wheres-my-meme/releases/download/v1.0.0/MemeOCR-1.0.0.apk) · [English](README.md)
 
-- **纯本地**：OCR 模型随安装包提供，识别、缓存和搜索都在手机上完成，无需联网，不上传图片。
-- **轻量**：使用 Kotlin 和 Android 原生界面，按批次处理图片，复用已保存的识别结果，并限制图片解码和缩略图缓存的内存占用。
-- **无需部署**：安装 APK、授予照片读取权限即可使用，不需要搭建服务器或配置云服务。
+- **纯本地**：两个平台都随程序提供中文 OCR 模型，识别、缓存和搜索无需联网，不上传图片。
+- **分批处理**：复用已保存的识别结果，限制图片解码和缩略图缓存的内存占用。
+- **无需服务器**：手机安装 APK；Windows 打开便携 EXE 即可使用。
 
 ## 项目背景
 
@@ -17,11 +17,37 @@
 
 ## 当前版本
 
-1.0.0，已签名的非调试版 APK，约 44.2 MiB。支持 Android 8.0 / API 26 及以上版本。
+Windows 1.1.0 本地测试版，适用于 Windows 10/11 x64 的便携 EXE，内置 Python、Qt、中文 OCR 模型和运行库。无需安装 Python，也不需要首次下载模型。启动时会将运行文件解压到系统临时目录。
 
-已在没有 Google Play 服务、关闭网络的 Android 11 AOSP 模拟器及华为Mate60Pro手机中运行验证。
+Android 1.0.0，已签名的非调试版 APK，约 44.2 MiB。支持 Android 8.0 / API 26 及以上版本。
 
-## 安装与使用
+Android 已在没有 Google Play 服务、关闭网络的 Android 11 AOSP 模拟器及华为 Mate 60 Pro 手机中运行验证。Windows 构建和测试情况见 [Windows 测试记录](docs/windows.md)。
+
+## Windows 使用方法
+
+1. 双击打开测试程序 `WhereIsMyMeme-1.1.0-windows-x64.exe`，无需安装或管理员权限。
+2. 在 **识别相册** 页点击 **选择文件夹**；需要识别下级目录时，勾选 **包含子文件夹**。
+3. 设置批量数量，点击 **开始识别本批**。默认 1000 张，范围 1–10000。**停止本批** 会保存当前图片的结果后停止。再次开始会继续处理；失败图片通过 **重试本相册失败项** 重试。
+4. 在 **搜索图片** 页输入文字，点击 **查找图片**。搜索覆盖所有已登记的文件夹，**正则模式** 沿用下文的 RE2 语法。
+5. 点击结果预览。**复制到剪贴板** 提供可粘贴的图片数据；**复制图片所在路径** 复制图片的绝对文件路径。
+
+原图只读，缓存保存在 `%LOCALAPPDATA%\WhereIsMyMeme\cache.sqlite3`。已成功处理的图片（包括没有文字的图片）会跳过，文件大小或修改时间变化后重新识别。退出时等待正在执行的任务结束，每张已完成的结果都已保存。
+
+Windows 使用 RapidOCR 内置的中文 PP-OCRv4 模型，Android 使用 ML Kit，两者识别结果可能不同。动图识别及剪贴板图片数据使用首帧；剪贴板同时提供原文件引用，接收软件会选择粘贴图片或文件。复制路径可用于找到原始动图。
+
+## 构建 Windows EXE
+
+在 Windows 上准备 Python 3.12 x64 和 PowerShell，首次构建需联网获取固定版本的依赖。
+
+```powershell
+./scripts/build-windows.ps1 -OutputDir "$env:TEMP/wheres-my-meme-windows"
+```
+
+脚本拒绝将产物写入源码目录。虚拟环境、缓存、中间文件、EXE、校验和及测试报告统一保存在 `OutputDir`。构建流程会运行逻辑和界面测试，再对打包后的 EXE 执行中文 OCR 和 Windows 系统剪贴板自验。GitHub Actions 的 `windows-2022` 构建机使用同一脚本。
+
+桌面源码位于 `desktop/`；测试范围见 [docs/windows.md](docs/windows.md)。程序内也包含 [第三方许可说明](desktop/THIRD_PARTY_NOTICES.txt) 及依赖的原始许可文件。
+
+## Android 安装与使用
 
 1. 将 [MemeOCR-1.0.0.apk](https://github.com/rb-tyz/wheres-my-meme/releases/download/v1.0.0/MemeOCR-1.0.0.apk) 传到手机，使用系统安装器打开。如果系统询问，允许用于打开文件的应用安装此 APK。
 2. 打开 **Meme 文字搜索**，授予照片读取权限。应用只显示获准访问的图片。通知权限用于在通知栏展示识别进度。

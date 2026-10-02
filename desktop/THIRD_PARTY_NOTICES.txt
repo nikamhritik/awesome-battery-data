@@ -1,0 +1,48 @@
+Where's My Meme for Windows 1.1.0
+
+Project source: https://github.com/rb-tyz/wheres-my-meme (MIT).
+Runtime components remain under their respective licenses.
+
+Qt for Python / PySide6 and Shiboken6 6.8.3: LGPL-3.0.
+https://code.qt.io/cgit/pyside/pyside-setup.git/tree/?h=v6.8.3
+https://code.qt.io/cgit/qt/qtbase.git/tree/?h=v6.8.3
+Qt libraries are dynamically linked. You may modify or replace them and rebuild
+the application using the published source and scripts/build-windows.ps1.
+Reverse engineering for debugging modifications to these libraries is permitted.
+Copies of LGPL-3.0 and GPL-3.0 are included in licenses/.
+
+RapidOCR 1.4.4 and PaddleOCR PP-OCRv4 Chinese models: Apache-2.0.
+https://github.com/RapidAI/RapidOCR
+https://github.com/PaddlePaddle/PaddleOCR
+The detection, direction and recognition ONNX models are bundled; they are not
+downloaded at runtime. Model digests are included in build-info.json.
+
+ONNX Runtime 1.20.1: MIT. https://github.com/microsoft/onnxruntime
+Google RE2: BSD-3-Clause. https://github.com/google/re2
+OpenCV 4.10.0: Apache-2.0 and its bundled third-party notices.
+https://github.com/opencv/opencv
+NumPy 1.26.4: BSD-3-Clause and bundled third-party notices.
+https://github.com/numpy/numpy
+Pillow 11.1.0: HPND and bundled third-party notices.
+https://github.com/python-pillow/Pillow
+PyYAML: MIT. https://github.com/yaml/pyyaml
+pyclipper: MIT; Clipper: BSL-1.0. https://github.com/fonttools/pyclipper
+Shapely: BSD-3-Clause; GEOS: LGPL-2.1. https://github.com/shapely/shapely
+https://github.com/libgeos/geos
+six: MIT. https://github.com/benjaminp/six
+SymPy: BSD-3-Clause. https://github.com/sympy/sympy
+mpmath: BSD-3-Clause. https://github.com/mpmath/mpmath
+coloredlogs / humanfriendly: MIT. https://github.com/xolox/python-coloredlogs
+flatbuffers: Apache-2.0. https://github.com/google/flatbuffers
+protobuf: BSD-3-Clause. https://github.com/protocolbuffers/protobuf
+packaging: Apache-2.0 or BSD-2-Clause. https://github.com/pypa/packaging
+tqdm: MPL-2.0 and MIT. https://github.com/tqdm/tqdm
+Python 3.12: PSF-2.0. https://www.python.org/downloads/source/
+PyInstaller bootloader: GPL-2.0-or-later with the distribution exception.
+https://github.com/pyinstaller/pyinstaller
+Microsoft Visual C++ runtime DLLs are redistributed from the PySide6 wheel under
+their upstream redistribution terms; no separate runtime installation is needed.
+
+Additional original license/notice files from installed distributions are copied
+into the executable's licenses/ directory by the build script. The portable
+executable expands its runtime files into a temporary directory when launched.

@@ -1,0 +1,44 @@
+name: Windows build
+
+on:
+  push:
+    branches: ['main', 'codex/windows-*', 'windows/**']
+    tags: ['v1.*']
+    paths: ['desktop/**', 'scripts/build-windows.ps1', '.github/workflows/windows.yml']
+  pull_request:
+    paths: ['desktop/**', 'scripts/build-windows.ps1', '.github/workflows/windows.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: windows-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  windows:
+    runs-on: windows-2022
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.12'
+          architecture: x64
+      - name: Test, package, and verify the frozen executable
+        shell: pwsh
+        run: ./scripts/build-windows.ps1 -OutputDir "${{ runner.temp }}/wheres-my-meme-windows"
+      - name: Upload verified executable
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: windows-v1.1.0-x64
+          path: ${{ runner.temp }}/wheres-my-meme-windows/release/*
+          if-no-files-found: error
+      - name: Upload test evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: windows-verification
+          path: ${{ runner.temp }}/wheres-my-meme-windows/verification/*
+          if-no-files-found: warn

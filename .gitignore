@@ -16,3 +16,17 @@ AGENTS.md
 # Publish installation packages as GitHub Release assets.
 *.apk
 *.apk.idsig
+
+# Windows distribution files and Python build/test intermediates.
+*.exe
+*.msi
+*.whl
+*.onnx
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.coverage*
+coverage.json
+*.spec
+**/dist/
+**/.venv/
