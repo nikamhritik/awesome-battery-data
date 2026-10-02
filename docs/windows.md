@@ -1,4 +1,4 @@
-# Windows 1.0.0 本地测试版
+# Windows 1.0.0
 
 Windows 版保留 Android 1.0.0 的分批识别、缓存续做、失败重试、普通文字和正则搜索。文件夹对应相册，原图只读。预览中的操作改为复制图片到系统剪贴板和复制图片的绝对文件路径。
 
@@ -47,7 +47,7 @@ GitHub Actions 使用 `.github/workflows/windows.yml` 和上述 PowerShell 脚�
 
 `WhereIsMyMeme-1.0.0-windows-x64.exe` 为 144,661,004 字节，SHA-256 为 `3e2e3d6c46af80f00bd274d0dac7f2d6bb7ec4e5a723e2906dc8641c57c7d782`。下载包与 GitHub 记录的摘要一致，EXE 与随附 `SHA256SUMS` 一致。内嵌构建信息的版本、三个 OCR 模型的哈希、Windows x64 格式、运行库和许可文件均已核对。
 
-当前暂缓公开 release 和 PR，先交付本地 EXE。用户自己的 Windows 电脑和常用聊天软件需要本地测试。
+Windows 代码通过 PR 合并到 `main` 后，将 EXE 和 `SHA256SUMS-windows-x64` 添加到现有的 [v1.0.0 release](https://github.com/rb-tyz/wheres-my-meme/releases/tag/v1.0.0)。已有 APK 和它的 `SHA256SUMS` 保留，应用版本仍为 1.0.0。用户自己的 Windows 电脑和常用聊天软件需要本地测试。
 
 ## 测试与协作范围
 
