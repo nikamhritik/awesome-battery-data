@@ -80,6 +80,8 @@ def test_search_thumbnails_preview_and_both_clipboard_actions(app, window):
     assert image.width() == 100 and image.height() == 80
     assert image.pixelColor(0, 0).red() == 255
     assert not app.clipboard().mimeData().hasUrls()
+    assert app.clipboard().mimeData().hasFormat('image/png')
+    assert app.clipboard().text() == window.hits[0].path
     buttons["复制图片所在路径"].click()
     wait(app, lambda: not window.jobs)
     assert app.clipboard().text() == window.hits[0].path
@@ -219,7 +221,7 @@ def test_native_selection_clicks_persist_across_pages_and_select_all(app, window
     window.preview_dialog.close()
 
 
-def test_bulk_file_clipboard_uses_ordered_original_files_and_preserves_images(app, window):
+def test_bulk_clipboard_uses_independent_images_and_ordered_original_files(app, window):
     add_results(window, 1)
     search_results(app, window)
     records = window.hits[:]
@@ -230,15 +232,24 @@ def test_bulk_file_clipboard_uses_ordered_original_files_and_preserves_images(ap
     window.copy_selected_button.click()
     wait(app, lambda: not window.jobs)
     mime = app.clipboard().mimeData()
-    assert mime.hasUrls() and not mime.hasImage()
+    assert mime.hasUrls() and mime.hasHtml() and not mime.hasImage()
     assert [canonical_path(url.toLocalFile()) for url in mime.urls()] == [r.path for r in records]
+    assert mime.text() == '\n'.join(record.path for record in records)
+    from test_clipboard import paste_images
+
+    receiver = QTextEdit()
+    receiver.paste()
+    received = paste_images(receiver)
+    assert len(received) == 2
+    assert [(image.width(), image.height()) for image in received] == [(24, 20), (100, 80)]
     assert "已复制 2 张" in window.search_status.text()
     assert before == {r.path: hashlib.sha256(Path(r.path).read_bytes()).hexdigest() for r in records}
 
 
 @pytest.mark.parametrize("failure", ["changed", "deleted", "permission"])
-def test_one_invalid_attachment_preserves_clipboard_and_does_not_copy_subset(app, window, monkeypatch, failure):
-    add_results(window, 1)
+@pytest.mark.parametrize('count', [1, 2])
+def test_one_invalid_attachment_preserves_clipboard_and_does_not_copy_subset(app, window, monkeypatch, failure, count):
+    add_results(window, count - 1)
     search_results(app, window)
     window.bulk_button.click()
     window.select_all_button.click()
@@ -261,8 +272,90 @@ def test_one_invalid_attachment_preserves_clipboard_and_does_not_copy_subset(app
     assert app.clipboard().text() == "previous clipboard"
     assert not app.clipboard().mimeData().hasUrls()
     assert "未复制" in window.search_status.text()
+    assert len(window.selection) == count
+    assert window.copy_selected_button.isEnabled()
+
+
+def test_single_bulk_copy_is_a_full_image_with_path_fallback(app, window):
+    search_results(app, window)
+    window.bulk_button.click()
+    window.select_all_button.click()
+    window.copy_selected_button.click()
+    wait(app, lambda: not window.jobs)
+    mime = app.clipboard().mimeData()
+    assert mime.hasImage() and mime.hasHtml() and mime.hasFormat('image/png')
+    assert not mime.hasUrls()
+    assert mime.text() == window.hits[0].path
+    image = app.clipboard().image()
+    assert image.width() == 100 and image.height() == 80
+    assert image.pixelColor(99, 79).red() == 255
+
+
+@pytest.mark.parametrize('failure', ['decode', 'encode', 'too_large', 'changed_during_batch'])
+def test_preparation_failures_preserve_the_entire_previous_clipboard(app, window, monkeypatch, failure):
+    from memeocr import clipboard
+
+    add_results(window, 1)
+    search_results(app, window)
+    window.bulk_button.click()
+    window.select_all_button.click()
+    if failure == 'decode':
+        def unreadable(*args):
+            raise OSError('图片解码失败')
+        monkeypatch.setattr(ui, 'load_qimage', unreadable)
+    elif failure == 'encode':
+        def failed_encoder(*args):
+            raise ValueError('PNG 编码失败')
+        monkeypatch.setattr(clipboard, 'encode_png', failed_encoder)
+    elif failure == 'too_large':
+        monkeypatch.setattr(clipboard, 'MAX_CLIPBOARD_BYTES', 1)
+    else:
+        original = ui.validated_image
+        def changed(record, max_side):
+            image = original(record, max_side)
+            if record == window.hits[-1]:
+                with open(window.hits[0].path, 'ab') as stream:
+                    stream.write(b'changed while another image was decoded')
+            return image
+        monkeypatch.setattr(ui, 'validated_image', changed)
+    app.clipboard().setText('previous complete clipboard')
+    window.copy_selected_button.click()
+    wait(app, lambda: not window.jobs)
+    assert app.clipboard().text() == 'previous complete clipboard'
+    assert not app.clipboard().mimeData().hasHtml()
+    assert '未复制' in window.search_status.text()
+    if failure == 'too_large':
+        assert '减少选择' in window.search_status.text()
     assert len(window.selection) == 2
     assert window.copy_selected_button.isEnabled()
+
+
+def test_png_preparation_runs_off_the_gui_thread_and_cancel_keeps_clipboard(app, window, monkeypatch):
+    from memeocr import clipboard
+
+    search_results(app, window)
+    window.bulk_button.click()
+    window.select_all_button.click()
+    entered, release = threading.Event(), threading.Event()
+    threads = []
+    original = clipboard.encode_png
+    def delayed(image):
+        threads.append(threading.get_ident())
+        entered.set()
+        release.wait(5)
+        return original(image)
+    monkeypatch.setattr(clipboard, 'encode_png', delayed)
+    app.clipboard().setText('keep clipboard while cancelled')
+    window.copy_selected_button.click()
+    wait(app, entered.is_set)
+    assert threads == [threads[0]] and threads[0] != threading.get_ident()
+    assert not window.copy_selected_button.isEnabled()
+    window.query.setText('missing')
+    window.search()
+    release.set()
+    wait(app, lambda: not window.jobs)
+    assert app.clipboard().text() == 'keep clipboard while cancelled'
+    assert len(window.selection) == 0
 
 
 @pytest.mark.parametrize("query, regex", [("missing", False), ("(?=猫)", True), ("", False)])
@@ -284,12 +377,12 @@ def test_repeated_copy_and_new_search_before_queued_copy_result(app, window, mon
     search_results(app, window)
     window.bulk_button.click()
     window.select_all_button.click()
-    original = ui.validated_paths
+    original = ui.validated_clipboard
     calls = []
     def counted(records, cancel):
         calls.append(len(records))
         return original(records, cancel)
-    monkeypatch.setattr(ui, "validated_paths", counted)
+    monkeypatch.setattr(ui, "validated_clipboard", counted)
     app.clipboard().setText("keep this clipboard")
     window.copy_selected()
     window.copy_selected()

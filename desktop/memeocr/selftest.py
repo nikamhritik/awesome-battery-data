@@ -15,7 +15,10 @@ from pathlib import Path
 
 def self_test(report_path, app):
     from PIL import Image
-    from PySide6.QtWidgets import QPushButton
+    from PySide6.QtCore import Qt, QUrl
+    from PySide6.QtGui import QImage, QTextDocument
+    from PySide6.QtTest import QTest
+    from PySide6.QtWidgets import QPushButton, QPlainTextEdit, QTextEdit
 
     from . import __version__
     from .core import run_batch, scan_folder, search_records, select_batch
@@ -52,6 +55,67 @@ def self_test(report_path, app):
                 return
             time.sleep(0.01)
         raise TimeoutError("等待后台任务完成超时")
+
+    def paste_receivers(paths):
+        rich = QTextEdit()
+        rich.resize(1040, 650)
+        QTest.keyClick(rich, Qt.Key.Key_V, Qt.KeyboardModifier.ControlModifier)
+        images = []
+        block = rich.document().begin()
+        while block.isValid():
+            iterator = block.begin()
+            while not iterator.atEnd():
+                fragment = iterator.fragment()
+                fmt = fragment.charFormat()
+                if fmt.isImageFormat():
+                    resource = rich.document().resource(
+                        QTextDocument.ResourceType.ImageResource, QUrl(fmt.toImageFormat().name()))
+                    images.append(resource)
+                iterator += 1
+            block = block.next()
+        plain = QPlainTextEdit()
+        QTest.keyClick(plain, Qt.Key.Key_V, Qt.KeyboardModifier.ControlModifier)
+        return rich, images, plain.toPlainText() == '\n'.join(paths)
+
+    def external_clipboard(phase, paths):
+        # Optional handshake for a separate native Linux receiver during Wine tests.
+        location = os.environ.get('MEMEOCR_SELFTEST_EXTERNAL_CLIPBOARD_DIR')
+        if not location:
+            return
+        directory = Path(location)
+        directory.mkdir(parents=True, exist_ok=True)
+        (directory / 'ready.json').write_text(json.dumps(
+            {'phase': phase, 'count': len(paths), 'paths': paths}, ensure_ascii=False), encoding='utf-8')
+        wait_for(lambda: (directory / f'{phase}.ack').exists(), timeout=45)
+        result = json.loads((directory / f'{phase}-receiver.json').read_text(encoding='utf-8'))
+        report.setdefault('external_clipboard', {})[phase] = result
+        check(f'external_{phase}_clipboard_paste', result['success'])
+
+    def native_clipboard_bytes(format_id):
+        import ctypes
+
+        native = ctypes.windll.user32
+        kernel = ctypes.windll.kernel32
+        native.GetClipboardData.argtypes = [ctypes.c_uint]
+        native.GetClipboardData.restype = ctypes.c_void_p
+        kernel.GlobalLock.argtypes = [ctypes.c_void_p]
+        kernel.GlobalLock.restype = ctypes.c_void_p
+        kernel.GlobalUnlock.argtypes = [ctypes.c_void_p]
+        kernel.GlobalSize.argtypes = [ctypes.c_void_p]
+        kernel.GlobalSize.restype = ctypes.c_size_t
+        if not native.OpenClipboard(None):
+            raise OSError('无法读取原生剪贴板')
+        try:
+            handle = native.GetClipboardData(format_id)
+            pointer = kernel.GlobalLock(handle)
+            if not pointer:
+                raise OSError('剪贴板数据为空')
+            try:
+                return ctypes.string_at(pointer, kernel.GlobalSize(handle))
+            finally:
+                kernel.GlobalUnlock(handle)
+        finally:
+            native.CloseClipboard()
 
     try:
         if os.name == "nt":
@@ -114,12 +178,22 @@ def self_test(report_path, app):
             wait_for(lambda: not window.jobs)
             copied = app.clipboard().image()
             check("clipboard_image_pixels", not copied.isNull() and copied.width() == 900 and copied.height() == 280)
+            png = bytes(app.clipboard().mimeData().data('image/png'))
+            check('clipboard_explicit_png', not QImage.fromData(png, 'PNG').isNull())
+            check('preview_text_fallback', app.clipboard().text() == canonical_path(source))
             if os.name == "nt":
                 import ctypes
 
                 native = ctypes.windll.user32
                 check("native_clipboard_bitmap", bool(native.IsClipboardFormatAvailable(8) or
                                                       native.IsClipboardFormatAvailable(17)))
+                native.RegisterClipboardFormatW.argtypes = [ctypes.c_wchar_p]
+                native.RegisterClipboardFormatW.restype = ctypes.c_uint
+                png_format = native.RegisterClipboardFormatW('PNG')
+                check('native_clipboard_png', bool(native.IsClipboardFormatAvailable(png_format)))
+                native_png = QImage.fromData(native_clipboard_bytes(png_format), 'PNG')
+                check('native_png_decodes', not native_png.isNull() and native_png.width() == 900 and
+                      native_png.height() == 280)
             buttons["复制图片所在路径"].click()
             wait_for(lambda: not window.jobs)
             check("clipboard_absolute_path", app.clipboard().text() == canonical_path(source))
@@ -127,6 +201,15 @@ def self_test(report_path, app):
                 check("native_clipboard_unicode_text", bool(native.IsClipboardFormatAvailable(13)))
             dialog.close()
             window.bulk_button.click()
+            window.results.item(0).setSelected(True)
+            window.copy_selected_button.click()
+            wait_for(lambda: not window.jobs)
+            check('bulk_single_image', app.clipboard().mimeData().hasImage() and
+                  not app.clipboard().mimeData().hasUrls())
+            single_paths = [record.path for record in window.selection.selected_records()]
+            _, single_images, single_text = paste_receivers(single_paths)
+            check('single_ctrl_v_and_text_fallback', len(single_images) == 1 and single_text)
+            external_clipboard('single', single_paths)
             window.select_all_button.click()
             check("bulk_selection_count", len(window.selection) == 2)
             check("bulk_selection_screenshot", window.grab().save(str(report_path.parent / "windows-bulk-selection.png")))
@@ -135,10 +218,24 @@ def self_test(report_path, app):
             wait_for(lambda: not window.jobs)
             check("clipboard_multiple_files", [canonical_path(url.toLocalFile())
                   for url in app.clipboard().mimeData().urls()] == expected_paths)
+            rich, pasted, text_matches = paste_receivers(expected_paths)
+            check('multiple_ctrl_v_independent_images', len(pasted) == 2 and
+                  all(not image.isNull() and image.width() == 900 and image.height() == 280 for image in pasted))
+            check('multiple_plain_text_fallback', text_matches)
+            rich.show()
+            app.processEvents()
+            check('rich_paste_screenshot', rich.grab().save(str(report_path.parent / 'windows-rich-paste.png')))
+            rich.close()
+            external_clipboard('multiple', expected_paths)
             if os.name == "nt":
                 from ctypes import c_void_p, c_uint, c_wchar_p
 
                 check("native_clipboard_hdrop", bool(native.IsClipboardFormatAvailable(15)))
+                html_format = native.RegisterClipboardFormatW('HTML Format')
+                check('native_clipboard_html', bool(native.IsClipboardFormatAvailable(html_format)))
+                html_data = native_clipboard_bytes(html_format)
+                check('native_html_contains_independent_images', html_data.count(b'<img ') == 2)
+                check('native_multi_text_fallback', bool(native.IsClipboardFormatAvailable(13)))
                 native.GetClipboardData.restype = c_void_p
                 shell = ctypes.windll.shell32
                 shell.DragQueryFileW.argtypes = [c_void_p, c_uint, c_wchar_p, c_uint]

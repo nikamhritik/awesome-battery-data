@@ -4,18 +4,18 @@ Android 和 Windows 都可从搜索结果中选择多张图片，显示已选数
 
 Android 点击 **批量选择** 或长按结果进入选择模式，点击图片选中或取消，再点击 **分享所选**。单张仍使用系统单图片分享，多张使用系统多图片分享；接收应用得到每个原图 URI 的临时读取权限。屏幕旋转和返回应用后重新检查媒体版本，保留仍有效的选择。进程重新启动时清空选择。
 
-Windows 点击 **批量选择** 后，点击结果选中或取消；**复制所选到剪贴板** 提供按搜索结果顺序排列的原图文件列表。原始 GIF 等文件保留动画，接收软件需要支持图片文件粘贴。预览中的单张图片数据复制和绝对路径复制保持原有用法。
+Windows 点击 **批量选择** 后，点击结果选中或取消；**复制所选到剪贴板** 按搜索结果顺序提供多张独立图片。单张提供图片像素及 PNG；多张提供内嵌每张 PNG 的富文本和原图文件列表。复制同时提供每张一行的绝对路径，供纯文本输入框使用。接收软件选择它支持的格式。图片数据使用动图首帧，原文件列表保留 GIF 等文件的动画。预览的单张图片复制使用相同格式，另有仅复制路径的按钮。
 
-应用在后台检查所选图片是否仍可读、版本是否匹配。一项失效时，本次分享或复制失败；Windows 保留旧剪贴板，不复制剩余部分。选择逻辑只保存版本标识，不将全部原图读入内存。系统或接收软件可能限制一次接收的图片数，可以减少选择后再次发送。
+应用在后台检查所选图片是否仍可读、版本是否匹配。一项失效时，本次分享或复制失败；Windows 保留旧剪贴板，不复制剩余部分。选择逻辑只保存版本标识；复制时逐张解码，准备完全部内容后发布。富文本和路径内容限额为 64 MiB，超出时提示减少选择；单张图片仍受已有 3200 万像素解码上限约束。系统或接收软件可能限制一次接收的图片数，可以减少选择后再次发送。
 
 ## 自动验证
 
 - Android 纯逻辑测试：80 项通过，包括新增的空选择、去重、按结果排序、版本变化、清空重选、9000 条结果和随机选择变化测试。
 - 发布版 APK 构建、v2/v3 签名与合并权限检查通过；版本 `1.1.0`，versionCode `2`，与 1.0.0 使用相同签名证书。Android lint 无错误，11 项提示涉及固定依赖版本和界面文字国际化。
-- 桌面逻辑与 Qt 界面测试：Linux 隔离 Python 3.12 环境，118 项通过。core/storage/images/selection 总语句覆盖率 97%，新增 selection 模块 100%。
-- 桌面界面测试使用真实 Qt 点击，覆盖跨页选择、全选全部结果、退出后预览、原图哈希不变、多文件剪贴板、删除/变化/权限失败、重复点击、旧回调和关闭窗口。
+- 桌面逻辑与 Qt 界面测试：Linux 隔离 Python 3.12 环境，146 项通过。core/storage/images/selection/clipboard 总语句覆盖率 98%，selection 与 clipboard 模块 100%。
+- 桌面界面测试使用真实 Qt 点击及 Ctrl+V，覆盖独立图片粘贴、换行路径回退、PNG 透明度、图片顺序、跨页选择、全选全部结果、退出后预览、原图哈希不变、文件列表、删除/变化/权限/解码/编码失败、大小限额、重复点击、旧回调和关闭窗口。
 - Android 多图片 intent 仪器测试覆盖所有 URI 的 ClipData、单张与多张 action、Parcel 往返和仅临时读权限。测试 APK 已编译；本次未连接设备执行这些测试。
-- Linux offscreen 离线自验：20 项检查通过，退出码为 0；包含真实中文 OCR、预览、单图复制、多图文件列表、清空选择和原图哈希检查。自验结束后清除临时图片的剪贴板数据。
+- Linux offscreen 离线自验：27 项检查通过，退出码为 0；包含真实中文 OCR、预览、显式 PNG、单图和多图 Ctrl+V、独立图片资源、纯文本路径回退、文件列表、清空选择和原图哈希检查。自验结束后清除临时图片的剪贴板数据。
 
 可重复运行：
 
@@ -24,23 +24,24 @@ Windows 点击 **批量选择** 后，点击结果选中或取消；**复制所�
 
 PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=desktop QT_QPA_PLATFORM=offscreen \
   python -m pytest desktop/tests -p no:cacheprovider \
-  --cov=memeocr.core --cov=memeocr.storage --cov=memeocr.images --cov=memeocr.selection
+  --cov=memeocr.core --cov=memeocr.storage --cov=memeocr.images --cov=memeocr.selection \
+  --cov=memeocr.clipboard
 
 PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=desktop QT_QPA_PLATFORM=offscreen \
   python -m memeocr --self-test /tmp/memeocr-verification/source-selftest.json
 ```
 
-Windows 原生构建使用 `scripts/build-windows.ps1`。冻结程序自验增加了两张原图的文件列表复制，并通过 Windows `CF_HDROP` 和 `DragQueryFileW` 读取实际剪贴板文件数量与路径。Linux offscreen 自验只验证 Qt 行为。
+Windows 原生构建使用 `scripts/build-windows.ps1`。冻结程序自验读取注册的 PNG 和 HTML Format 原生数据，检查图片可解码及 HTML 中每张图片独立存在；另通过 `CF_HDROP` 和 `DragQueryFileW` 读取实际文件数量与路径。Linux offscreen 自验验证 Qt 行为。
 
-2026-10-03，[Windows 构建 37034868142](https://github.com/rb-tyz/wheres-my-meme/actions/runs/37034868142) 在 `windows-2022` 验证提交 `eebe682243d3a192c3020dc355dcc7ec5fb7e22c`：114 项测试通过，4 项 POSIX 专用权限测试跳过，覆盖率 96%，selection 模块 100%。打包后的 `1.1.0` EXE 使用 Windows 平台插件，26 项自验全部通过，包括单图片数据、路径文本、多图文件列表、原生 `CF_HDROP` 文件数量和路径、关闭线程和原图哈希不变。批量选择截图已检查。后续 Android 查询恢复修正未改变本次验证的 Windows 源码。
+初版记录：2026-10-03，[Windows 构建 37034868142](https://github.com/rb-tyz/wheres-my-meme/actions/runs/37034868142) 在 `windows-2022` 验证提交 `eebe682243d3a192c3020dc355dcc7ec5fb7e22c`：114 项测试通过，4 项 POSIX 专用权限测试跳过，覆盖率 96%，selection 模块 100%。打包后的 `1.1.0` EXE 使用 Windows 平台插件，26 项自验全部通过，包括单图片数据、路径文本、多图文件列表、原生 `CF_HDROP` 文件数量和路径、关闭线程和原图哈希不变。该版本随后根据用户的粘贴反馈修正。
 
-交付 `WhereIsMyMeme-1.1.0-windows-x64.exe`：144,665,588 字节，SHA-256 `33bde76be619940d1aaf4815df373b13842adce9019de73d863f12545398ea62`。GitHub ZIP 摘要 `7fd317458cc15e297a60579db3db756fdcaf3ccec724826965101474e17e26ff`、ZIP CRC、包内 EXE 校验和和 PE x64 格式均已核对；校验和随测试包保存在 `artifacts/SHA256SUMS-windows-x64`。
+初版 `WhereIsMyMeme-1.1.0-windows-x64.exe`：144,665,588 字节，SHA-256 `33bde76be619940d1aaf4815df373b13842adce9019de73d863f12545398ea62`。GitHub ZIP 摘要 `7fd317458cc15e297a60579db3db756fdcaf3ccec724826965101474e17e26ff`、ZIP CRC、包内 EXE 校验和和 PE x64 格式曾核对通过。
 
 新增纯选择逻辑的测试行数超过实现行数。原生 Android 控件与生命周期使用编译检查和真机验收，Qt 控件与 Windows 剪贴板使用上述界面测试和冻结程序自验。
 
 ## 真实环境验收
 
-Mate 60 Pro 和用户 Windows 电脑尚待测试；本次未进行 Android 模拟器验证。建议验收以下使用过程：
+2026-10-03，用户反馈 Android 1.1.0 已通过手机验收。Windows 初版 Wine 测试中的文件列表复制与用户期望的图片粘贴效果有差别；独立 Xwayland `:97` 的剪贴板也与桌面 QQ 隔离。Windows 正在验收修正版，本次未新增 Android 模拟器验证。复验可检查以下使用过程：
 
 1. 搜索后选择 2–10 张图片，确认已选数量和逐张取消。Android 打开系统分享菜单，Windows 在常用聊天软件中粘贴。
 2. Windows 切换结果页再返回，确认选择保留；在不同页选图，再使用全选和清空。

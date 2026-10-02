@@ -39,6 +39,7 @@ try {
     Set-Location $OutputDir
     Invoke-TaskPython @('-m', 'pytest', (Join-Path $RepoRoot 'desktop/tests'), '-p', 'no:cacheprovider',
         '--cov=memeocr.core', '--cov=memeocr.storage', '--cov=memeocr.images', '--cov=memeocr.selection',
+        '--cov=memeocr.clipboard',
         "--cov-report=json:$(Join-Path $Verification 'coverage.json')", '--cov-report=term-missing',
         "--junitxml=$(Join-Path $Verification 'tests.xml')")
     Invoke-TaskPython @((Join-Path $RepoRoot 'desktop/build_support.py'), $Resources)

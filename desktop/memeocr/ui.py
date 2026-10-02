@@ -4,7 +4,7 @@ import threading
 from collections import OrderedDict
 from pathlib import Path
 
-from PySide6.QtCore import QMimeData, QSize, Qt, QThread, QTimer, QUrl, Signal
+from PySide6.QtCore import QSize, Qt, QThread, QTimer, Signal
 from PySide6.QtGui import QIcon, QPixmap
 from PySide6.QtWidgets import (
     QAbstractItemView, QApplication, QCheckBox, QComboBox, QDialog, QFileDialog, QHBoxLayout,
@@ -14,6 +14,7 @@ from PySide6.QtWidgets import (
 )
 
 from . import __version__
+from .clipboard import prepare_images, publish_images
 from .core import canonical_path, run_batch, scan_folder, search_records, select_batch, stat_item
 from .images import load_qimage
 from .ocr import Recognizer
@@ -49,12 +50,6 @@ def validated_image(record, max_side=2048):
     return image
 
 
-def copy_image(image):
-    mime = QMimeData()
-    mime.setImageData(image)
-    QApplication.clipboard().setMimeData(mime)
-
-
 def validated_paths(records, cancel):
     paths = []
     for record in records:
@@ -66,10 +61,14 @@ def validated_paths(records, cancel):
     return paths
 
 
-def copy_files(paths):
-    mime = QMimeData()
-    mime.setUrls([QUrl.fromLocalFile(path) for path in paths])
-    QApplication.clipboard().setMimeData(mime)
+def validated_clipboard(records, cancel):
+    if validated_paths(records, cancel) is None:
+        return None
+    payload = prepare_images(records, cancel, lambda record: validated_image(record, None))
+    # Recheck earlier images after preparing the whole batch, before publishing anything.
+    if payload is None or validated_paths(records, cancel) is None:
+        return None
+    return payload
 
 
 class MainWindow(QMainWindow):
@@ -263,7 +262,7 @@ class MainWindow(QMainWindow):
         busy = self.copy_job is not None
         self.bulk_button.setText("退出选择" if self.bulk_mode else "批量选择")
         self.bulk_button.setEnabled(bool(self.hits) and not busy)
-        self.selection_status.setText("正在检查图片…" if busy else f"已选 {len(self.selection)} 张")
+        self.selection_status.setText("正在准备图片…" if busy else f"已选 {len(self.selection)} 张")
         self.selection_status.setVisible(self.bulk_mode)
         for button in (self.select_all_button, self.clear_selection_button, self.copy_selected_button):
             button.setVisible(self.bulk_mode)
@@ -311,18 +310,18 @@ class MainWindow(QMainWindow):
         if self.copy_job or not records:
             return
         generation = self.copy_generation
-        def copied(paths):
-            if generation != self.copy_generation or paths is None:
+        def copied(payload):
+            if generation != self.copy_generation or payload is None:
                 return
-            copy_files(paths)
-            self.search_status.setText(f"已复制 {len(paths)} 张图片文件，可到支持图片文件粘贴的应用中粘贴。")
+            publish_images(payload)
+            self.search_status.setText(f"已复制 {len(payload.paths)} 张独立图片；纯文本输入框会粘贴路径，每张一行。")
         def failed(message):
             if generation == self.copy_generation:
-                self.search_status.setText(f"未复制：{message}。请重新搜索。")
+                self.search_status.setText(f"未复制：{message}")
         def finished():
             self.copy_job = None
             self._selection_controls()
-        self.copy_job = self._job(lambda job: validated_paths(records, job.cancel), copied,
+        self.copy_job = self._job(lambda job: validated_clipboard(records, job.cancel), copied,
                                   failure=failed, finished=finished)
         self._selection_controls()
 
@@ -593,13 +592,13 @@ class MainWindow(QMainWindow):
         row.addWidget(close)
         layout.addLayout(row)
         def copied(value, is_image):
-            if not shiboken6.isValid(dialog):
+            if not shiboken6.isValid(dialog) or value is None:
                 return
             if is_image:
-                copy_image(value)
+                publish_images(value)
             else:
                 QApplication.clipboard().setText(value.path)
-            status.setText("已复制图片。" if is_image else "已复制图片所在路径。")
+            status.setText("已复制图片；纯文本输入框会粘贴图片路径。" if is_image else "已复制图片所在路径。")
             image_button.setEnabled(True)
             path_button.setEnabled(True)
         def start_copy(is_image):
@@ -607,7 +606,7 @@ class MainWindow(QMainWindow):
             path_button.setEnabled(False)
             def verify(job):
                 if is_image:
-                    return validated_image(record, None)
+                    return validated_clipboard([record], job.cancel)
                 current = stat_item(record.path, record.folder)
                 if not record.matches(current):
                     raise OSError("图片已改变，请重新识别")

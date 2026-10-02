@@ -33,8 +33,8 @@ The Android app has been tested on an Android 11 AOSP emulator without Google Pl
 2. On **识别相册**, click **选择文件夹**. Enable **包含子文件夹** if your memes are stored in nested folders.
 3. Choose a batch size, then click **开始识别本批**. The default is 1,000 images; the range is 1–10,000. **停止本批** saves the current image before stopping. Start again to continue, or use **重试本相册失败项** to retry failures.
 4. On **搜索图片**, enter text and click **查找图片**. Results span all registered folders. **正则模式** supports the same RE2 syntax described below.
-5. Click a result to preview it. **复制到剪贴板** copies image data for pasting into another app; **复制图片所在路径** copies its absolute file path.
-6. Click **批量选择**, then click the images you want. **全选结果** selects all search results across pages; **清空选择** clears them. **复制所选到剪贴板** copies the original image files, including animated files, for apps that accept pasted files. **退出选择** returns to preview mode. A new search clears the selection.
+5. Click a result to preview it. **复制到剪贴板** copies image pixels and PNG data for pasting into another app; a plain text field receives the absolute file path. **复制图片所在路径** copies only that path.
+6. Click **批量选择**, then click the images you want. **全选结果** selects all search results across pages; **清空选择** clears them. **复制所选到剪贴板** provides separate images in rich text, the original files for apps that accept them, and one absolute path per line for plain text fields. Images remain separate. **退出选择** returns to preview mode. A new search clears the selection.
 
 Original images are read-only. The cache is stored in `%LOCALAPPDATA%\WhereIsMyMeme\cache.sqlite3`. Completed images, including those with no text, are skipped until their size or modification time changes. Closing the window waits for active work to finish; each completed result is already saved.
 
