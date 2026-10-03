@@ -3,7 +3,6 @@ package com.memeocr.app
 import android.Manifest
 import android.app.Activity
 import android.app.AlertDialog
-import android.content.ClipData
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.content.res.ColorStateList
@@ -19,6 +18,7 @@ import com.memeocr.app.data.RecognitionDb
 import com.memeocr.app.media.ImageLoader
 import com.memeocr.app.media.MediaStoreReader
 import com.memeocr.app.ocr.OcrService
+import com.memeocr.app.share.ShareIntents
 import com.memeocr.core.*
 import java.util.concurrent.*
 
@@ -50,6 +50,22 @@ class MainActivity : Activity() {
     private lateinit var bar: ProgressBar
     private lateinit var grid: GridView
     private lateinit var adapter: HitAdapter
+    private lateinit var bulkButton: Button
+    private lateinit var bulkActions: LinearLayout
+    private lateinit var selectAllButton: Button
+    private lateinit var clearButton: Button
+    private lateinit var shareButton: Button
+    private lateinit var selectionText: TextView
+    private val selection = Selection()
+    private var bulkMode = false
+    private var sharing = false
+    @Volatile private var shareGeneration = 0
+    private var hasSearched = false
+    private var resultQuery: String? = null
+    private var resultRegex = false
+    private var restoredKeys: List<String>? = null
+    private var refreshingKeys = emptyList<String>()
+    private data class RetainedSelection(val keys: List<String>)
     private var albums = emptyList<Album>()
     private var selected: Album? = null
     private var searchVisible = false
@@ -77,6 +93,17 @@ class MainActivity : Activity() {
         db = RecognitionDb(this)
         reader = MediaStoreReader(this)
         buildUi()
+        savedInstanceState?.let {
+            searchInput.setText(it.getString("query", ""))
+            regex.isChecked = it.getBoolean("regex")
+            searchVisible = it.getBoolean("searchVisible")
+            hasSearched = it.getBoolean("hasSearched")
+            resultQuery = it.getString("resultQuery")
+            resultRegex = it.getBoolean("resultRegex")
+            bulkMode = it.getBoolean("bulkMode")
+        }
+        restoredKeys = (lastNonConfigurationInstance as? RetainedSelection)?.keys
+        updateSelection()
         setContentView(root)
         root.setOnApplyWindowInsetsListener { view, insets ->
             if (Build.VERSION.SDK_INT >= 35) {
@@ -171,13 +198,48 @@ class MainActivity : Activity() {
         searchPage.full(button("查找图片") { search() })
         resultText = text("识别完成后，输入文字查找。")
         searchPage.full(resultText)
+        val selectionRow = LinearLayout(this)
+        bulkButton = button("批量选择") {
+            bulkMode = !bulkMode
+            if (!bulkMode) selection.clear()
+            updateSelection(); adapter.notifyDataSetChanged()
+        }
+        selectionText = text("已选 0 张")
+        selectionRow.addView(bulkButton, LinearLayout.LayoutParams(0, -2, 1f))
+        selectionRow.addView(selectionText, LinearLayout.LayoutParams(0, -2, 1f))
+        searchPage.full(selectionRow)
+        bulkActions = LinearLayout(this)
+        selectAllButton = button("全选结果") {
+            selection.selectAll(); updateSelection(); adapter.notifyDataSetChanged()
+        }
+        clearButton = button("清空选择") {
+            selection.clear(); updateSelection(); adapter.notifyDataSetChanged()
+        }
+        shareButton = button("分享所选") {
+            share(adapter.hits.filter { selection.contains(key(it.record)) }.map { it.record })
+        }
+        listOf(selectAllButton, clearButton, shareButton).forEach {
+            bulkActions.addView(it, LinearLayout.LayoutParams(0, -2, 1f))
+        }
+        searchPage.full(bulkActions)
         adapter = HitAdapter()
         grid = GridView(this).apply {
             numColumns = GridView.AUTO_FIT; columnWidth = dp(105)
             stretchMode = GridView.STRETCH_COLUMN_WIDTH
             verticalSpacing = dp(8); horizontalSpacing = dp(8)
             adapter = this@MainActivity.adapter
-            setOnItemClickListener { _, _, position, _ -> preview(this@MainActivity.adapter.hits[position]) }
+            setOnItemClickListener { _, _, position, _ ->
+                val hit = this@MainActivity.adapter.hits.getOrNull(position) ?: return@setOnItemClickListener
+                if (bulkMode) {
+                    selection.toggle(key(hit.record)); updateSelection()
+                    this@MainActivity.adapter.notifyDataSetChanged()
+                } else preview(hit)
+            }
+            setOnItemLongClickListener { _, _, position, _ ->
+                val hit = this@MainActivity.adapter.hits.getOrNull(position) ?: return@setOnItemLongClickListener false
+                bulkMode = true; selection.setSelected(key(hit.record), true)
+                updateSelection(); this@MainActivity.adapter.notifyDataSetChanged(); true
+            }
         }
         searchPage.addView(grid, LinearLayout.LayoutParams(-1, 0, 1f))
 
@@ -196,6 +258,7 @@ class MainActivity : Activity() {
             addView(permissionPage, FrameLayout.LayoutParams(-1, -1))
         }
         root.addView(body, LinearLayout.LayoutParams(-1, 0, 1f))
+        updateSelection()
     }
 
     private fun hasPhotos(): Boolean {
@@ -226,10 +289,16 @@ class MainActivity : Activity() {
         permissionPage.visibility = if (allowed) View.GONE else View.VISIBLE
         albumPage.visibility = if (allowed && !search) View.VISIBLE else View.GONE
         searchPage.visibility = if (allowed && search) View.VISIBLE else View.GONE
-        if (!allowed) { searchGeneration++; adapter.hits = emptyList(); adapter.notifyDataSetChanged() }
+        if (!allowed) {
+            searchGeneration++; shareGeneration++; sharing = false
+            selection.replaceResults(emptyList()); restoredKeys = null; refreshingKeys = emptyList(); bulkMode = false
+            adapter.hits = emptyList(); adapter.notifyDataSetChanged(); updateSelection()
+        } else if (!search && sharing) {
+            shareGeneration++; sharing = false; updateSelection()
+        }
     }
 
-    private fun <T> read(block: () -> T, done: (T) -> Unit) {
+    private fun <T> read(block: () -> T, failed: ((Exception) -> Unit)? = null, done: (T) -> Unit) {
         if (disposed) return
         io.execute {
             try {
@@ -238,8 +307,10 @@ class MainActivity : Activity() {
             } catch (e: Exception) {
                 main.post {
                     if (!disposed) {
-                        Toast.makeText(this, RecognitionPolicy.describeError(e), Toast.LENGTH_LONG).show()
-                        if (e is SecurityException) showPage(searchVisible)
+                        if (failed != null) failed(e) else {
+                            Toast.makeText(this, RecognitionPolicy.describeError(e), Toast.LENGTH_LONG).show()
+                            if (e is SecurityException) showPage(searchVisible)
+                        }
                     }
                 }
             }
@@ -318,30 +389,63 @@ class MainActivity : Activity() {
         } + (p.lastError?.let { "\n最近提示：" + it } ?: "")
     }
 
-    private fun search() {
+    private fun search(restore: List<String> = emptyList(), restoring: Boolean = false) {
         val generation = ++searchGeneration
-        val query = searchInput.text.toString()
-        if (query.isBlank()) { toast("请输入要找的文字"); return }
-        val mode = if (regex.isChecked) SearchMode.Regex(query) else SearchMode.Literal(query)
+        refreshingKeys = restore
+        shareGeneration++; sharing = false
+        selection.replaceResults(emptyList())
+        if (!restoring) bulkMode = false
+        adapter.hits = emptyList(); adapter.notifyDataSetChanged(); updateSelection()
+        val query = if (restoring) resultQuery ?: searchInput.text.toString() else searchInput.text.toString()
+        val regexMode = if (restoring) resultRegex else regex.isChecked
+        if (!restoring) { resultQuery = query; resultRegex = regexMode }
+        if (query.isBlank()) {
+            hasSearched = false; resultText.text = "请输入要找的文字。"; return
+        }
+        hasSearched = true
+        val mode = if (regexMode) SearchMode.Regex(query) else SearchMode.Literal(query)
         if (mode is SearchMode.Regex && RegexSearch.validate(query).isFailure) {
             resultText.text = RegexSearch.validate(query).exceptionOrNull()?.message
-            adapter.hits = emptyList(); adapter.notifyDataSetChanged(); return
+            return
         }
         getSystemService(InputMethodManager::class.java).hideSoftInputFromWindow(searchInput.windowToken, 0)
         resultText.text = "正在查找…"
-        adapter.hits = emptyList(); adapter.notifyDataSetChanged()
         read({
             val current = reader.listImages().associateBy { it.uri }
             val accessible = db.allRecords().filter { record ->
                 current[record.uri]?.let { record.matchesVersion(it) } == true
             }
             TextSearch.search(accessible, mode)
+        }, failed = { e ->
+            if (generation == searchGeneration) {
+                refreshingKeys = emptyList()
+                resultText.text = RecognitionPolicy.describeError(e)
+                if (e is SecurityException) showPage(searchVisible)
+            }
         }) { hits ->
             if (generation != searchGeneration) return@read
+            selection.replaceResults(hits.map { key(it.record) })
+            restore.forEach { selection.setSelected(it, true) }
+            refreshingKeys = emptyList()
             adapter.hits = hits; adapter.notifyDataSetChanged()
+            updateSelection()
             resultText.text = "找到 " + hits.size + " 张" +
-                if (hits.isEmpty()) "。仅搜索已识别、未改变且仍可访问的图片。" else " · 点击预览和分享"
+                if (hits.isEmpty()) "。仅搜索已识别、未改变且仍可访问的图片。" else " · 点击预览，或批量选择"
         }
+    }
+
+    private fun key(record: RecognitionRecord) = MediaItem(record.uri, record.size, record.lastModified).versionKey
+
+    private fun updateSelection() {
+        bulkButton.text = if (bulkMode) "退出选择" else "批量选择"
+        bulkButton.isEnabled = adapter.hits.isNotEmpty() && !sharing
+        selectionText.text = if (sharing) "正在检查图片…" else "已选 ${selection.size} 张"
+        selectionText.visibility = if (bulkMode) View.VISIBLE else View.GONE
+        bulkActions.visibility = if (bulkMode) View.VISIBLE else View.GONE
+        selectAllButton.isEnabled = adapter.hits.isNotEmpty() && !sharing
+        clearButton.isEnabled = selection.size > 0 && !sharing
+        shareButton.isEnabled = selection.size > 0 && !sharing
+        grid.isEnabled = !sharing
     }
 
     private inner class HitAdapter : BaseAdapter() {
@@ -350,22 +454,34 @@ class MainActivity : Activity() {
         override fun getItem(position: Int) = hits[position]
         override fun getItemId(position: Int) = position.toLong()
         override fun getView(position: Int, convertView: View?, parent: ViewGroup): View {
-            val image = (convertView as? ImageView) ?: ImageView(this@MainActivity).apply {
+            val cell = (convertView as? FrameLayout) ?: FrameLayout(this@MainActivity).apply {
                 layoutParams = AbsListView.LayoutParams(-1, dp(128))
-                scaleType = ImageView.ScaleType.FIT_CENTER
-                setBackgroundColor(Color.WHITE)
+                addView(ImageView(this@MainActivity).apply {
+                    scaleType = ImageView.ScaleType.FIT_CENTER
+                }, FrameLayout.LayoutParams(-1, -1))
+                addView(CheckBox(this@MainActivity).apply {
+                    isClickable = false; isFocusable = false
+                    importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
+                    buttonTintList = ColorStateList.valueOf(teal)
+                }, FrameLayout.LayoutParams(dp(40), dp(40), Gravity.TOP or Gravity.END))
             }
+            val image = cell.getChildAt(0) as ImageView
+            val check = cell.getChildAt(1) as CheckBox
             val record = hits[position].record
             val key = MediaItem(record.uri, record.size, record.lastModified).versionKey
+            val checked = selection.contains(key)
+            check.visibility = if (bulkMode) View.VISIBLE else View.GONE
+            check.isChecked = checked
+            cell.setBackgroundColor(if (bulkMode && checked) Color.rgb(208, 235, 229) else Color.WHITE)
+            cell.contentDescription = (if (bulkMode) if (checked) "已选择图片：" else "未选择图片：" else "匹配图片：") + record.text.take(80)
             image.tag = key
-            image.contentDescription = "匹配图片：" + record.text.take(80)
             image.setImageDrawable(null)
             thumbs.execute {
                 val bitmap = try { ImageLoader.thumbnail(key) { reader.openInputStream(record.uri) } }
                              catch (_: Exception) { null }
                 main.post { if (!disposed && image.tag == key) image.setImageBitmap(bitmap) }
             }
-            return image
+            return cell
         }
     }
 
@@ -381,7 +497,7 @@ class MainActivity : Activity() {
         }
         val scroll = ScrollView(this).apply { addView(content) }
         val dialog = AlertDialog.Builder(this).setTitle("图片预览").setView(scroll)
-            .setPositiveButton("分享图片") { _, _ -> share(hit.record.uri) }
+            .setPositiveButton("分享图片") { _, _ -> share(listOf(hit.record)) }
             .setNegativeButton("关闭", null).show()
         read({
             val current = reader.statUri(hit.record.uri)
@@ -392,15 +508,37 @@ class MainActivity : Activity() {
         }
     }
 
-    private fun share(value: String) {
-        val uri = Uri.parse(value)
-        val intent = Intent(Intent.ACTION_SEND).apply {
-            type = "image/*"; putExtra(Intent.EXTRA_STREAM, uri)
-            clipData = ClipData.newRawUri("meme", uri)
-            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+    private fun share(records: List<RecognitionRecord>) {
+        if (sharing || records.isEmpty()) return
+        val generation = ++shareGeneration
+        sharing = true; updateSelection()
+        read({
+            records.distinctBy { it.uri }.map { record ->
+                if (generation != shareGeneration) throw CancellationException("已取消分享")
+                val current = reader.statUri(record.uri)
+                if (current == null || !record.matchesVersion(current))
+                    throw java.io.IOException("所选图片已改变或不可访问，请重新搜索")
+                reader.openInputStream(record.uri)?.use { it.read() }
+                    ?: throw java.io.IOException("所选图片不可读取，请重新搜索")
+                val after = reader.statUri(record.uri)
+                if (after == null || !record.matchesVersion(after))
+                    throw java.io.IOException("所选图片在检查期间发生变化，请重新搜索")
+                Uri.parse(record.uri)
+            }
+        }, failed = { e ->
+            if (generation == shareGeneration) {
+                sharing = false; updateSelection(); toast(RecognitionPolicy.describeError(e))
+                if (e is SecurityException) showPage(searchVisible)
+            }
+        }) { uris ->
+            if (generation != shareGeneration) return@read
+            sharing = false; updateSelection()
+            try { startActivity(Intent.createChooser(ShareIntents.images(uris), "分享图片")) }
+            catch (e: Exception) {
+                toast(if (e is TransactionTooLargeException || e.cause is TransactionTooLargeException)
+                    "选择的图片过多，请减少数量后再分享" else "没有可用的分享应用，或图片已不可访问")
+            }
         }
-        try { startActivity(Intent.createChooser(intent, "分享图片")) }
-        catch (_: Exception) { toast("没有可用的分享应用，或图片已不可访问") }
     }
     private fun toast(message: String) = Toast.makeText(this, message, Toast.LENGTH_LONG).show()
 
@@ -408,12 +546,33 @@ class MainActivity : Activity() {
         super.onResume()
         showPage(searchVisible)
         // Permissions and media may have changed while this activity was away.
-        searchGeneration++; adapter.hits = emptyList(); adapter.notifyDataSetChanged()
+        val keys = restoredKeys ?: if (refreshingKeys.isNotEmpty()) refreshingKeys else selection.selectedKeys()
+        restoredKeys = null
+        if (hasPhotos() && hasSearched) search(keys, restoring = true)
+        else {
+            searchGeneration++; adapter.hits = emptyList(); adapter.notifyDataSetChanged()
+            selection.replaceResults(emptyList()); updateSelection()
+        }
         if (hasPhotos()) refreshAlbums()
         previousProgress = null
         main.removeCallbacks(poll); main.post(poll)
     }
-    override fun onPause() { main.removeCallbacks(poll); super.onPause() }
+    override fun onSaveInstanceState(state: Bundle) {
+        state.putString("query", searchInput.text.toString())
+        state.putBoolean("regex", regex.isChecked)
+        state.putBoolean("searchVisible", searchVisible)
+        state.putBoolean("hasSearched", hasSearched)
+        state.putString("resultQuery", resultQuery)
+        state.putBoolean("resultRegex", resultRegex)
+        state.putBoolean("bulkMode", bulkMode)
+        super.onSaveInstanceState(state)
+    }
+    override fun onRetainNonConfigurationInstance(): Any =
+        RetainedSelection(if (refreshingKeys.isNotEmpty()) refreshingKeys else selection.selectedKeys())
+    override fun onPause() {
+        shareGeneration++; sharing = false; updateSelection()
+        main.removeCallbacks(poll); super.onPause()
+    }
     override fun onDestroy() {
         disposed = true; main.removeCallbacksAndMessages(null)
         thumbs.shutdownNow()

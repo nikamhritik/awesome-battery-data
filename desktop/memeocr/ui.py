@@ -4,19 +4,21 @@ import threading
 from collections import OrderedDict
 from pathlib import Path
 
-from PySide6.QtCore import QMimeData, QSize, Qt, QThread, QTimer, Signal
+from PySide6.QtCore import QSize, Qt, QThread, QTimer, Signal
 from PySide6.QtGui import QIcon, QPixmap
 from PySide6.QtWidgets import (
-    QApplication, QCheckBox, QComboBox, QDialog, QFileDialog, QHBoxLayout,
+    QAbstractItemView, QApplication, QCheckBox, QComboBox, QDialog, QFileDialog, QHBoxLayout,
     QLabel, QLineEdit, QListView, QListWidget, QListWidgetItem, QMainWindow,
     QMessageBox, QProgressBar, QPushButton, QSpinBox, QTabWidget, QTextEdit,
     QVBoxLayout, QWidget,
 )
 
 from . import __version__
+from .clipboard import prepare_images, publish_images
 from .core import canonical_path, run_batch, scan_folder, search_records, select_batch, stat_item
 from .images import load_qimage
 from .ocr import Recognizer
+from .selection import Selection
 
 PAGE_SIZE = 48
 
@@ -48,10 +50,25 @@ def validated_image(record, max_side=2048):
     return image
 
 
-def copy_image(image):
-    mime = QMimeData()
-    mime.setImageData(image)
-    QApplication.clipboard().setMimeData(mime)
+def validated_paths(records, cancel):
+    paths = []
+    for record in records:
+        if cancel.is_set():
+            return None
+        if not record.matches(stat_item(record.path, record.folder)):
+            raise OSError("所选图片已改变")
+        paths.append(record.path)
+    return paths
+
+
+def validated_clipboard(records, cancel):
+    if validated_paths(records, cancel) is None:
+        return None
+    payload = prepare_images(records, cancel, lambda record: validated_image(record, None))
+    # Recheck earlier images after preparing the whole batch, before publishing anything.
+    if payload is None or validated_paths(records, cancel) is None:
+        return None
+    return payload
 
 
 class MainWindow(QMainWindow):
@@ -64,6 +81,10 @@ class MainWindow(QMainWindow):
         self.page_generation = 0
         self.items = []
         self.hits = []
+        self.selection = Selection()
+        self.bulk_mode = False
+        self.copy_job = None
+        self.copy_generation = 0
         self.page = 0
         self.thumbnail_cache = OrderedDict()
         self.recognizer = None
@@ -195,6 +216,22 @@ class MainWindow(QMainWindow):
         self.search_status = QLabel("搜索所有已识别的相册；点击图片可预览、复制图片或路径。")
         self.search_status.setWordWrap(True)
         box.addWidget(self.search_status)
+        row = QHBoxLayout()
+        self.bulk_button = QPushButton("批量选择")
+        self.bulk_button.setCheckable(True)
+        self.bulk_button.toggled.connect(self.set_bulk_mode)
+        self.selection_status = QLabel("已选 0 张")
+        self.select_all_button = QPushButton("全选结果")
+        self.select_all_button.clicked.connect(self.select_all_results)
+        self.clear_selection_button = QPushButton("清空选择")
+        self.clear_selection_button.clicked.connect(self.clear_selection)
+        self.copy_selected_button = QPushButton("复制所选到剪贴板")
+        self.copy_selected_button.clicked.connect(self.copy_selected)
+        for control in (self.bulk_button, self.selection_status, self.select_all_button,
+                        self.clear_selection_button, self.copy_selected_button):
+            row.addWidget(control)
+        row.addStretch()
+        box.addLayout(row)
         self.results = QListWidget()
         self.results.setViewMode(QListView.ViewMode.IconMode)
         self.results.setResizeMode(QListView.ResizeMode.Adjust)
@@ -202,7 +239,8 @@ class MainWindow(QMainWindow):
         self.results.setIconSize(QSize(142, 126))
         self.results.setGridSize(QSize(172, 166))
         self.results.setWordWrap(True)
-        self.results.itemClicked.connect(self.preview)
+        self.results.itemClicked.connect(lambda item: None if self.bulk_mode else self.preview(item))
+        self.results.itemSelectionChanged.connect(self._selection_changed)
         box.addWidget(self.results, 1)
         row = QHBoxLayout()
         self.previous = QPushButton("上一页")
@@ -218,6 +256,74 @@ class MainWindow(QMainWindow):
         self.tabs.addTab(page, "搜索图片")
         self.previous.setEnabled(False)
         self.next.setEnabled(False)
+        self._selection_controls()
+
+    def _selection_controls(self):
+        busy = self.copy_job is not None
+        self.bulk_button.setText("退出选择" if self.bulk_mode else "批量选择")
+        self.bulk_button.setEnabled(bool(self.hits) and not busy)
+        self.selection_status.setText("正在准备图片…" if busy else f"已选 {len(self.selection)} 张")
+        self.selection_status.setVisible(self.bulk_mode)
+        for button in (self.select_all_button, self.clear_selection_button, self.copy_selected_button):
+            button.setVisible(self.bulk_mode)
+        self.select_all_button.setEnabled(bool(self.hits) and not busy)
+        self.clear_selection_button.setEnabled(bool(len(self.selection)) and not busy)
+        self.copy_selected_button.setEnabled(bool(len(self.selection)) and not busy)
+        self.results.setEnabled(not busy)
+
+    def set_bulk_mode(self, enabled):
+        self.bulk_mode = enabled
+        if not enabled:
+            self.selection.clear()
+        self.results.blockSignals(True)
+        self.results.setSelectionMode(QAbstractItemView.SelectionMode.MultiSelection if enabled else
+                                      QAbstractItemView.SelectionMode.SingleSelection)
+        self.results.clearSelection()
+        for index in range(self.results.count()):
+            item = self.results.item(index)
+            item.setSelected(enabled and self.selection.contains(item.data(Qt.ItemDataRole.UserRole)))
+        self.results.blockSignals(False)
+        self._selection_controls()
+        if self.hits:
+            hint = "点击选择，翻页保留所选图片" if enabled else "点击预览和复制"
+            self.search_status.setText(f"找到 {len(self.hits)} 张 · {hint}")
+
+    def _selection_changed(self):
+        if not self.bulk_mode:
+            return
+        for index in range(self.results.count()):
+            item = self.results.item(index)
+            self.selection.set_selected(item.data(Qt.ItemDataRole.UserRole), item.isSelected())
+        self._selection_controls()
+
+    def select_all_results(self):
+        self.bulk_button.setChecked(True)
+        self.selection.select_all()
+        self.set_bulk_mode(True)
+
+    def clear_selection(self):
+        self.selection.clear()
+        self.set_bulk_mode(self.bulk_mode)
+
+    def copy_selected(self):
+        records = self.selection.selected_records()
+        if self.copy_job or not records:
+            return
+        generation = self.copy_generation
+        def copied(payload):
+            if generation != self.copy_generation or payload is None:
+                return
+            publish_images(payload)
+            self.search_status.setText(f"已复制 {len(payload.paths)} 张独立图片；纯文本输入框会粘贴路径，每张一行。")
+        def failed(message):
+            if generation == self.copy_generation:
+                self.search_status.setText(f"未复制：{message}")
+        def finished():
+            self.copy_job = None
+            self._selection_controls()
+        self.copy_job = self._job(lambda job: validated_clipboard(records, job.cancel), copied,
+                                  failure=failed, finished=finished)
+        self._selection_controls()
 
     def _selected(self):
         return self.albums.currentData()
@@ -339,6 +445,20 @@ class MainWindow(QMainWindow):
     def search(self):
         if self.search_job:
             return
+        self.copy_generation += 1
+        if self.copy_job:
+            self.copy_job.cancel.set()
+        self.page_generation += 1
+        if self.page_job:
+            self.page_job.cancel.set()
+        self.selection.replace_results([])
+        self.hits = []
+        self.bulk_button.setChecked(False)
+        self.results.clear()
+        self.previous.setEnabled(False)
+        self.next.setEnabled(False)
+        self.page_label.setText("")
+        self._selection_controls()
         query, regex = self.query.text(), self.regex.isChecked()
         if not query.strip():
             self.search_status.setText("请输入要找的文字。")
@@ -347,13 +467,13 @@ class MainWindow(QMainWindow):
         generation = self.search_generation
         self.search_button.setEnabled(False)
         self.search_status.setText("正在查找图片…")
-        self.hits = []
-        self.results.clear()
         def complete(hits):
             self.search_job = None
             self.search_button.setEnabled(True)
             if generation == self.search_generation:
                 self.hits = hits
+                self.selection.replace_results(hits)
+                self._selection_controls()
                 self.show_page(0)
         def failed(message):
             self.search_job = None
@@ -373,12 +493,14 @@ class MainWindow(QMainWindow):
         self.previous.setEnabled(self.page > 0)
         self.next.setEnabled(self.page + 1 < pages)
         self.page_label.setText(f"{self.page + 1} / {pages}")
-        self.search_status.setText(f"找到 {len(self.hits)} 张 · 点击预览和复制" if self.hits else
+        hint = "点击选择，翻页保留所选图片" if self.bulk_mode else "点击预览和复制"
+        self.search_status.setText(f"找到 {len(self.hits)} 张 · {hint}" if self.hits else
                                   "没有匹配图片。请试试较短的文字；搜索仅包含已识别、未改变的图片。")
 
     def _render_page(self, generation):
         if self.closing or generation != self.page_generation:
             return
+        self.results.blockSignals(True)
         self.results.clear()
         records = self.hits[self.page * PAGE_SIZE:(self.page + 1) * PAGE_SIZE]
         cached = dict(self.thumbnail_cache)
@@ -387,6 +509,8 @@ class MainWindow(QMainWindow):
             item.setData(Qt.ItemDataRole.UserRole, record)
             item.setToolTip(record.text[:400])
             self.results.addItem(item)
+            item.setSelected(self.bulk_mode and self.selection.contains(record))
+        self.results.blockSignals(False)
         def thumbnails(job):
             decoded = []
             for index, record in enumerate(records):
@@ -468,13 +592,13 @@ class MainWindow(QMainWindow):
         row.addWidget(close)
         layout.addLayout(row)
         def copied(value, is_image):
-            if not shiboken6.isValid(dialog):
+            if not shiboken6.isValid(dialog) or value is None:
                 return
             if is_image:
-                copy_image(value)
+                publish_images(value)
             else:
                 QApplication.clipboard().setText(value.path)
-            status.setText("已复制图片。" if is_image else "已复制图片所在路径。")
+            status.setText("已复制图片；纯文本输入框会粘贴图片路径。" if is_image else "已复制图片所在路径。")
             image_button.setEnabled(True)
             path_button.setEnabled(True)
         def start_copy(is_image):
@@ -482,7 +606,7 @@ class MainWindow(QMainWindow):
             path_button.setEnabled(False)
             def verify(job):
                 if is_image:
-                    return validated_image(record, None)
+                    return validated_clipboard([record], job.cancel)
                 current = stat_item(record.path, record.folder)
                 if not record.matches(current):
                     raise OSError("图片已改变，请重新识别")
