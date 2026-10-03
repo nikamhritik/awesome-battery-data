@@ -6,7 +6,7 @@ A fully local app for finding saved memes on Android and Windows. It reads an al
 
 - **Fully local**: Both downloads include a Chinese OCR model. Recognition, caching and search work without an Internet connection or image uploads.
 - **Batch processing**: Saved results are reused, with bounded image decoding and thumbnail caching.
-- **Batch selection**: Select several search results, share them on Android or copy the original files on Windows. Selection persists across Windows result pages.
+- **Batch selection**: Select several search results, share them on Android or copy separate images to the clipboard on Windows. Selection persists across Windows result pages.
 - **No server to set up**: Install the Android APK or open the portable Windows executable.
 
 ## Background
@@ -19,7 +19,7 @@ Then Astra came to the rescue and helped me write this app. And by "helped," I m
 
 ## Release and compatibility
 
-The source version is 1.1.0, adding batch selection on both platforms. The download links above point to the published 1.0.0 packages until the new version completes real-device testing. See [batch selection and verification](docs/bulk-selection.md).
+The source version is 1.1.0, adding batch selection on both platforms. The download links above point to the published 1.0.0 packages until the 1.1.0 release is published. See [batch selection and verification](docs/bulk-selection.md).
 
 Windows 1.0.0 is a portable executable for Windows 10/11 x64. A release or a port of existing features does not change the application version. It includes Python, Qt, the Chinese OCR models and the required runtime libraries. You do not need to install Python or download a model. Its first launch extracts runtime files into the system temporary directory.
 
