@@ -39,7 +39,11 @@ Windows 原生构建使用 `scripts/build-windows.ps1`。冻结程序自验读�
 
 图片粘贴修正的 [Windows 构建 37045918302](https://github.com/rb-tyz/wheres-my-meme/actions/runs/37045918302) 验证提交 `bab64d7`：142 项测试通过、4 项平台相关测试跳过，clipboard 模块覆盖率 100%；冻结 EXE 的 38 项自验通过。该包的 SHA-256 为 `36ae997e44a857ee938ecd27017cf00c8e53e8974ca5f44e2dc331ab395770eb`。
 
-随后在桌面共享显示会话 `:0` 进行 Wine 跨程序测试：PNG 已传到桌面，但接收端未得到标准 `text/html`，只看到 Windows 的 HTML Format，因此富文本粘贴退回路径。后续代码补充 UTF-8 的注册 `text/html` 格式；46 项相关测试通过。这个补充需要重新构建 EXE 并复验 Wine 与 QQ，当前本地 EXE 仍为上述 `bab64d7` 测试包。
+随后在桌面共享显示会话 `:0` 进行 Wine 跨程序测试：PNG 已传到桌面，但接收端未得到标准 `text/html`，只看到 Windows 的 HTML Format，因此富文本粘贴退回路径。提交 `62e3c57` 补充 UTF-8 的注册 `text/html` 格式；46 项相关测试通过。
+
+最新交付包来自 [Windows 构建 37048994666](https://github.com/rb-tyz/wheres-my-meme/actions/runs/37048994666)，源码为 `62e3c57cbe774126c6a95bcda129eef91c8fd01e`：142 项测试通过、4 项平台相关测试跳过，clipboard 模块覆盖率 100%，冻结 EXE 的 38 项原生自验通过。下载后已核对 GitHub ZIP 摘要、ZIP CRC、包内 EXE 校验和及 PE x64 格式。交付文件为 `artifacts/WhereIsMyMeme-1.1.0-windows-x64.exe`，144,927,694 字节，SHA-256 `47e22b825ce04c41ed1796bf518537293bc1a9b622deb26ee6c75624117764c0`。
+
+同一交付 EXE 在隔离 Wine 11.0 环境及桌面共享显示 `:0` 复验，40 项自验通过，退出码为 0。独立 Linux Qt 接收程序实际执行 Ctrl+V：单张可解码为 900×280 的图片，多张得到两张独立的 900×280 图片，纯文本框按行得到完整路径；接收端可读取标准 `text/html`。原图哈希不变，测试窗口已关闭。QQ 的实际粘贴效果待用户验收。
 
 新增纯选择逻辑的测试行数超过实现行数。原生 Android 控件与生命周期使用编译检查和真机验收，Qt 控件与 Windows 剪贴板使用上述界面测试和冻结程序自验。
 
