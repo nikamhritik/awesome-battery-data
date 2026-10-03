@@ -1,132 +1,133 @@
 # Where's My Meme
 
-A fully local app for finding saved memes on Android and Windows. It reads an album or folder, recognizes and saves the text in each image, and lets you search for memes by that text. No server is needed.
+一款纯本地的 Android 和 Windows meme 搜索工具。读取本地相册或文件夹，识别图片中的文字并保存结果，之后输入文字就能查找对应的 meme，无需部署服务器。
 
-[简体中文](README-zh_cn.md) · [Windows EXE](https://github.com/rb-tyz/wheres-my-meme/releases/download/v1.0.0/WhereIsMyMeme-1.0.0-windows-x64.exe) · [Android APK](https://github.com/rb-tyz/wheres-my-meme/releases/download/v1.0.0/MemeOCR-1.0.0.apk) · [Windows instructions](docs/windows.md)
+[Windows EXE](https://github.com/rb-tyz/wheres-my-meme/releases/download/v1.1.0/WhereIsMyMeme-1.1.0-windows-x64.exe) · [Android APK](https://github.com/rb-tyz/wheres-my-meme/releases/download/v1.1.0/MemeOCR-1.1.0.apk) · [Windows 使用说明](docs/windows.md) · [English](README-en.md)
 
-- **Fully local**: Both downloads include a Chinese OCR model. Recognition, caching and search work without an Internet connection or image uploads.
-- **Batch processing**: Saved results are reused, with bounded image decoding and thumbnail caching.
-- **Batch selection**: Select several search results, share them on Android or copy separate images to the clipboard on Windows. Selection persists across Windows result pages.
-- **No server to set up**: Install the Android APK or open the portable Windows executable.
+- **纯本地**：两个平台都随程序提供中文 OCR 模型，识别、缓存和搜索无需联网，不上传图片。
+- **分批处理**：复用已保存的识别结果，限制图片解码和缩略图缓存的内存占用。
+- **批量选中**：选择多张搜索结果，Android 使用系统分享，Windows 将多张独立图片复制到剪贴板；Windows 翻页后保留选择。
+- **无需服务器**：手机安装 APK；Windows 打开便携 EXE 即可使用。
 
-## Background
+## 项目背景
 
-**Who doesn't love a good meme?**
+**谁会不喜欢meme呢？**
 
-I've collected about 9,000 memes so far. I'll be in a chat and think of the perfect one, the kind that would absolutely win the conversation, only to give up because I can't find it in my gallery.
+作为一个收藏了9000张（目前）meme的老吃家，我总是在聊天的时候偶然想到一张非常符合氛围、可以直接杀死比赛的meme，但是苦于没有好的检索手段，总是只能作罢。
+此时Astra大人神兵天降，帮 ~~（替）~~ 我写 ~~（vibe）~~ 出了这款工具。
 
-Then Astra came to the rescue and helped me write this app. And by "helped," I mean did the coding while I supplied the vibes.
+## 当前版本
 
-## Release and compatibility
+当前版本为 1.1.0，新增两端的批量选中功能。上方提供已发布的 Android APK 和 Windows EXE。功能和测试范围见 [批量选中说明](docs/bulk-selection.md)。
 
-The source version is 1.1.0, adding batch selection on both platforms. The download links above point to the published 1.0.0 packages until the 1.1.0 release is published. See [batch selection and verification](docs/bulk-selection.md).
+Windows 1.1.0 是适用于 Windows 10/11 x64 的便携 EXE。程序内置 Python、Qt、中文 OCR 模型和运行库，无需安装 Python，也不需要首次下载模型。启动时会将运行文件解压到系统临时目录。
 
-Windows 1.0.0 is a portable executable for Windows 10/11 x64. A release or a port of existing features does not change the application version. It includes Python, Qt, the Chinese OCR models and the required runtime libraries. You do not need to install Python or download a model. Its first launch extracts runtime files into the system temporary directory.
+Android 1.1.0，已签名的非调试版 APK，约 44.2 MiB。支持 Android 8.0 / API 26 及以上版本。
 
-Android 1.0.0 is a signed, non-debuggable APK, approximately 44.2 MiB. It supports Android 8.0 / API 26 and later.
+Android 已在没有 Google Play 服务、关闭网络的 Android 11 AOSP 模拟器及华为 Mate 60 Pro 手机中运行验证。Windows 构建和测试情况见 [Windows 测试记录](docs/windows.md)。
 
-The Android app has been tested on an Android 11 AOSP emulator without Google Play services and with networking disabled, and on a Huawei Mate 60 Pro. Windows build and verification details are in [docs/windows.md](docs/windows.md).
+## Windows 使用方法
 
-## Use on Windows
+1. 从 Releases 下载 [WhereIsMyMeme-1.1.0-windows-x64.exe](https://github.com/rb-tyz/wheres-my-meme/releases/download/v1.1.0/WhereIsMyMeme-1.1.0-windows-x64.exe)，双击打开，无需安装或管理员权限。
+2. 在 **识别相册** 页点击 **选择文件夹**；需要识别下级目录时，勾选 **包含子文件夹**。
+3. 设置批量数量，点击 **开始识别本批**。默认 1000 张，范围 1–10000。**停止本批** 会保存当前图片的结果后停止。再次开始会继续处理；失败图片通过 **重试本相册失败项** 重试。
+4. 在 **搜索图片** 页输入文字，点击 **查找图片**。搜索覆盖所有已登记的文件夹，**正则模式** 沿用下文的 RE2 语法。
+5. 点击结果预览。**复制到剪贴板** 提供图片像素和 PNG 数据，纯文本输入框会粘贴图片的绝对路径；**复制图片所在路径** 只复制路径。
+6. 点击 **批量选择**，再点击需要的图片。**全选结果** 选择全部搜索结果，包含其他页；**清空选择** 取消所有选择。**复制所选到剪贴板** 同时提供多张独立图片的富文本、原图文件列表，以及每张一行的绝对路径。接收应用按支持的格式粘贴。**退出选择** 返回预览模式。重新搜索会清空选择。
 
-1. Download [WhereIsMyMeme-1.0.0-windows-x64.exe](https://github.com/rb-tyz/wheres-my-meme/releases/download/v1.0.0/WhereIsMyMeme-1.0.0-windows-x64.exe) from Releases and open it by double-clicking it. No installer or administrator access is needed.
-2. On **识别相册**, click **选择文件夹**. Enable **包含子文件夹** if your memes are stored in nested folders.
-3. Choose a batch size, then click **开始识别本批**. The default is 1,000 images; the range is 1–10,000. **停止本批** saves the current image before stopping. Start again to continue, or use **重试本相册失败项** to retry failures.
-4. On **搜索图片**, enter text and click **查找图片**. Results span all registered folders. **正则模式** supports the same RE2 syntax described below.
-5. Click a result to preview it. **复制到剪贴板** copies image pixels and PNG data for pasting into another app; a plain text field receives the absolute file path. **复制图片所在路径** copies only that path.
-6. Click **批量选择**, then click the images you want. **全选结果** selects all search results across pages; **清空选择** clears them. **复制所选到剪贴板** provides separate images in rich text, the original files for apps that accept them, and one absolute path per line for plain text fields. Images remain separate. **退出选择** returns to preview mode. A new search clears the selection.
+原图只读，缓存保存在 `%LOCALAPPDATA%\WhereIsMyMeme\cache.sqlite3`。已成功处理的图片（包括没有文字的图片）会跳过，文件大小或修改时间变化后重新识别。退出时等待正在执行的任务结束，每张已完成的结果都已保存。
 
-Original images are read-only. The cache is stored in `%LOCALAPPDATA%\WhereIsMyMeme\cache.sqlite3`. Completed images, including those with no text, are skipped until their size or modification time changes. Closing the window waits for active work to finish; each completed result is already saved.
+Windows 使用 RapidOCR 内置的中文 PP-OCRv4 模型，Android 使用 ML Kit，两者识别结果可能不同。动图识别及剪贴板图片数据使用首帧。复制路径可用于找到原始动图。
 
-Windows uses RapidOCR's bundled Chinese PP-OCRv4 models; Android uses ML Kit. Their recognition results may differ. Animated images use the first frame. Copying the path preserves access to the original animated file.
+## 构建 Windows EXE
 
-## Build the Windows executable
-
-Use Python 3.12 x64 on Windows and PowerShell. The first build needs an Internet connection for the pinned dependencies.
+在 Windows 上准备 Python 3.12 x64 和 PowerShell，首次构建需联网获取固定版本的依赖。
 
 ```powershell
 ./scripts/build-windows.ps1 -OutputDir "$env:TEMP/wheres-my-meme-windows"
 ```
 
-The script rejects output directories inside the checkout. Its virtual environment, caches, work files, executable, checksums and test reports are written under `OutputDir`. It runs the unit/UI tests, packages a single executable, then tests that executable with real Chinese OCR and the native Windows clipboard. GitHub Actions uses the same script on `windows-2022`.
+脚本拒绝将产物写入源码目录。虚拟环境、缓存、中间文件、EXE、校验和及测试报告统一保存在 `OutputDir`。构建流程会运行逻辑和界面测试，再对打包后的 EXE 执行中文 OCR 和 Windows 系统剪贴板自验。GitHub Actions 的 `windows-2022` 构建机使用同一脚本。
 
-The desktop source is in `desktop/`. [Windows verification](docs/windows.md) records the tested scope. [Third-party notices](desktop/THIRD_PARTY_NOTICES.txt) and original dependency licenses are also included in the executable.
+桌面源码位于 `desktop/`；测试范围见 [docs/windows.md](docs/windows.md)。程序内也包含 [第三方许可说明](desktop/THIRD_PARTY_NOTICES.txt) 及依赖的原始许可文件。
 
-## Use on Android
+## Android 安装与使用
 
-1. Copy [MemeOCR-1.0.0.apk](https://github.com/rb-tyz/wheres-my-meme/releases/download/v1.0.0/MemeOCR-1.0.0.apk) to the phone and open it with the system package installer. Allow installation from the file-opening app if the system asks.
-2. Open **Meme 文字搜索** and grant photo access. The app only lists photos it is permitted to read. Notification permission allows progress to appear in the notification area.
-3. Select a local album. Start with a small batch such as 100 images to evaluate your own pictures. The default batch size is 1,000; accepted values are 1–10,000.
-4. Tap **开始识别本批**. Each result is saved before progress advances. **停止本批** lets the current image finish and saves it.
-5. Start another batch to continue. Completed, unchanged images—including images with no text—are skipped. Use **重试本相册失败项** to retry failed images in the selected album.
-6. Open **搜索图片**, enter text and tap **查找图片**. Tap a result to preview the original and open Android's share sheet.
-7. Tap **批量选择** or long-press a result to start selecting images. Tap images to select or deselect them, use **全选结果** or **清空选择**, then tap **分享所选** to open the system share sheet with all selected originals. A new search clears the selection. Rotation and returning from the share sheet keep selections whose image versions are still accessible; restarting the process clears them.
+1. 将 [MemeOCR-1.1.0.apk](https://github.com/rb-tyz/wheres-my-meme/releases/download/v1.1.0/MemeOCR-1.1.0.apk) 传到手机，使用系统安装器打开。如果系统询问，允许用于打开文件的应用安装此 APK。
+2. 打开 **Meme 文字搜索**，授予照片读取权限。应用只显示获准访问的图片。通知权限用于在通知栏展示识别进度。
+3. 选择本地相册。第一次建议先处理 100 张，看看自己图库里的识别效果。默认每批 1000 张，可输入 1–10000。
+4. 点击 **开始识别本批**。每张识别完成后先保存，再更新进度。点击 **停止本批** 后，会处理并保存当前图片，然后停止。
+5. 再次开始时自动跳过已完成且未改变的图片；没有文字也算完成。失败的图片通过 **重试本相册失败项** 单独重试。
+6. 切换到 **搜索图片**，输入文字并点击 **查找图片**。点击结果可预览原图，再打开系统分享菜单。
+7. 点击 **批量选择**，或长按一张结果，进入选择模式。点击图片可以选中或取消，**全选结果** 和 **清空选择** 操作全部结果；**分享所选** 将所有选中的原图交给系统分享菜单。重新搜索会清空选择。旋转屏幕或从分享应用返回后，会保留仍可访问、版本未变化的选择；重新启动进程会清空选择。
 
-Search spans all recognized albums that are still accessible. Images that were deleted, changed or are no longer authorized are excluded from search.
+搜索范围为所有已经识别、当前仍获准访问的相册。图片删除、内容发生可检测的变化或访问权限丢失后，旧记录不会继续出现在搜索结果里。
 
 <table align="center">
   <tr>
-    <th align="center">Text search: 猫猫 (cats)</th>
-    <th align="center">Regex search: 狗|猫 (dog or cat)</th>
+    <th align="center">文字搜索：猫猫</th>
+    <th align="center">正则搜索：狗|猫</th>
   </tr>
   <tr>
-    <td align="center" width="50%"><a href="pics/image.png"><img src="pics/image.png" alt="Text search for 猫猫 (cats), showing matching memes" width="280"></a></td>
-    <td align="center" width="50%"><a href="pics/image-1.png"><img src="pics/image-1.png" alt="Regex search for 狗|猫, showing memes containing either word" width="280"></a></td>
+    <td align="center" width="50%"><a href="pics/image.png"><img src="pics/image.png" alt="搜索“猫猫”，显示匹配的表情包" width="280"></a></td>
+    <td align="center" width="50%"><a href="pics/image-1.png"><img src="pics/image-1.png" alt="使用正则“狗|猫”，查找包含任一文字的表情包" width="280"></a></td>
   </tr>
 </table>
 
-## Search modes
+## 文字与正则搜索
 
-Ordinary search matches a substring after normalizing full-width ASCII, letter case and repeated whitespace. It cannot find text-free images by what they depict or correct OCR mistakes.
+普通搜索按文字包含关系匹配，忽略英文字母大小写、全角 ASCII 差异，并合并连续空白。搜索不会纠正 OCR 错字，也不能按画面含义查找无文字图片。
 
-Regular-expression mode matches the original OCR text and is case-sensitive. Examples:
+勾选 **正则模式** 后，对识别原文匹配，区分大小写。例如：
 
-| Expression | Meaning |
+| 表达式 | 匹配内容 |
 | --- | --- |
-| 摸鱼\|放假 | Either phrase |
-| [0-9]{4} | Four consecutive digits |
-| (?s)晚安.*明天 | 晚安 followed by 明天, allowing line breaks in between |
+| 摸鱼\|放假 | 包含任意一个词 |
+| [0-9]{4} | 连续四位数字 |
+| (?s)晚安.*明天 | 先出现“晚安”，后出现“明天”，中间可以换行 |
 
-Regular expressions use RE2/J to avoid catastrophic backtracking. Lookaround and backreferences are unsupported and produce an error message.
+正则使用 RE2/J，避免复杂表达式反复回溯导致长时间卡住。不支持前后查找和反向引用；不支持的语法会显示错误提示。
 
-## Storage, privacy and limitations
+## 图片、缓存与隐私
 
-- Original images are opened read-only. The app does not rename, move, rewrite or upload them.
-- The release APK does not request INTERNET, WRITE_EXTERNAL_STORAGE or MANAGE_EXTERNAL_STORAGE. OCR does not require a first-run model download.
-- OCR results, errors and metadata stay in the app's private SQLite database. Automatic app-data backups are disabled. Uninstalling the app or clearing its data removes the recognition cache.
-- Cache identity uses media URI, file size and modification time. A changed version is processed again. Moved/copied images can be processed again; content-hash deduplication is not included.
-- Animated images are recognized from their first frame. Preview is static; sharing sends the original file.
-- OCR can struggle with blurry text, small print and stylized lettering. In one test image, “今天也要开心” was read as “今天也妻开心”, so an exact search for a long sentence may miss a match. Try a shorter phrase, though words the OCR missed still won't be searchable.
-- A foreground service reports progress, but the OS may stop it. Saved results survive process termination; reopen the app and start the next batch. Automatic restart after force-stop/reboot is not provided.
-- Initial recognition time and accuracy for 9,000 real memes have not been measured. The 9,000-record automated checks cover scheduling and search, not an OCR throughput benchmark.
+- 原图只读，不改名、不移动、不写入，也不上传。
+- 发布 APK 没有联网权限、外部存储写入权限或“管理所有文件”权限。中文模型已打包，不需要首次使用时联网下载。
+- 识别文字、图片元数据和失败原因保存在应用私有 SQLite 数据库中，关闭了应用数据自动备份。卸载或清除应用数据会删除识别缓存。
+- 用媒体 URI、文件大小和修改时间判断是否为已处理版本。检测到版本变化会重新识别；移动或复制图片后可能再次处理。首版不做内容哈希去重。
+- 动图只识别首帧，预览也是静态图；分享时发送原文件。
+- 模糊字、小字和艺术字可能误识别。测试样本中出现过“今天也要开心”被识别为“今天也妻开心”，因此不能保证长句逐字匹配。可以尝试较短的词语，但未识别出的字仍无法检索。
+- 前台服务显示进度，但系统仍可能结束任务。已保存结果保留，重新打开后开始下一批即可；不承诺强制结束或重启手机后自动继续。
+- 尚未测量 9000 张真实 meme 的全量识别耗时与准确率。自动测试中的 9000 条数据用于检验批次和搜索行为，不代表手机 OCR 的速度。
 
-## Build
+## 从源码构建
 
-Use JDK 17, Android SDK platform 35, build-tools 34.0.0, and an Internet connection for the first dependency download. Gradle 8.9 and its checksum are pinned in the wrapper; AGP 8.7.3 and Kotlin 2.0.21 are pinned in the project.
+需要 JDK 17、Android SDK platform 35、build-tools 34.0.0。第一次下载依赖需要网络。项目固定使用 Gradle 8.9、AGP 8.7.3、Kotlin 2.0.21，Gradle wrapper 包含下载校验值。
 
     export JAVA_HOME=/path/to/jdk17
     export ANDROID_HOME=/path/to/android-sdk
     ./scripts/build-apk.sh
 
-The script runs unit tests and release lint, builds and signs the APK, verifies its signature and permissions, and writes a SHA-256 checksum to artifacts/SHA256SUMS. The first run creates a private signing key in .signing/. Preserve that directory securely for future updates; it is excluded from version control and must not be distributed with the APK. Losing the key prevents in-place updates signed with the same identity.
+脚本运行单元测试和发布版 lint，构建并签名 APK，检查签名和权限，最后生成 artifacts/SHA256SUMS。
 
-An existing Gradle executable can be supplied through GRADLE_BIN. GRADLE_USER_HOME can point to an isolated cache. No global Java or system configuration changes are required.
+首次运行会在 .signing/ 生成签名密钥。以后发布更新需要保留同一密钥，请妥善备份该目录，不要随 APK 分发，也不要提交到版本库。丢失密钥后，新签名的 APK 无法覆盖安装旧版本。
 
-## Tests and code
+可通过 GRADLE_BIN 指定已有 Gradle，通过 GRADLE_USER_HOME 指定隔离缓存，无须更改全局 Java 或系统配置。
+
+## 测试与目录
 
     ./gradlew :core:test :app:lintDebug :app:assembleDebug
     ./gradlew :app:connectedDebugAndroidTest
 
-Run the device tests on an emulator or a dedicated test device. They use synthetic images and temporary database records. The Chinese OCR integration check verifies that the offline model runs and recognizes specific words; it does not require a perfect transcription. Known errors are documented in the verification record.
+设备测试应使用模拟器或专用测试设备，输入为自制图片和临时数据库记录。中文 OCR 集成测试验证离线模型可调用、可识别指定词语，不要求每个字符完全正确；已知误差保存在测试记录中。
 
-- core/: platform-independent batch selection, processing loop, status, normalization and search.
-- app/: native Android UI, read-only MediaStore access, bounded decoding, SQLite and foreground OCR service.
-- app/src/androidTest/: actual decoder, SQLite and bundled OCR tests.
-- scripts/build-apk.sh: repeatable release and signing workflow.
-- docs/verification.md: commands, results, known OCR error, screenshots and remaining device checks.
+- core/：批次选择、逐张处理循环、状态、文字标准化与搜索。
+- app/：Android 原生界面、只读相册访问、有界图片解码、SQLite 和前台识别服务。
+- app/src/androidTest/：在 Android 上运行的解码、数据库和 OCR 测试。
+- scripts/build-apk.sh：构建、签名与安装包检查。
+- docs/verification.md：实际结果、截图、识别误差和真机待验项目。
 
-The app uses [ML Kit's bundled Chinese recognizer](https://developers.google.com/ml-kit/vision/text-recognition/v2/android), [Android MediaStore](https://developer.android.com/training/data-storage/shared/media) and [RE2/J](https://github.com/google/re2j).
+实现资料：[ML Kit 中文识别](https://developers.google.com/ml-kit/vision/text-recognition/v2/android)、[Android MediaStore](https://developer.android.com/training/data-storage/shared/media)、[RE2/J](https://github.com/google/re2j)。
 
-## License
+## 许可证
 
-This project's code is available under the [MIT License](LICENSE). Third-party dependencies and the memes shown in screenshots retain their respective licenses and copyrights.
+本项目代码采用 [MIT 许可证](LICENSE)。第三方依赖和截图中的表情包仍受各自的许可证及版权约束。
