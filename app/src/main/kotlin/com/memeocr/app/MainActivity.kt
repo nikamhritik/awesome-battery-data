@@ -1,6 +1,8 @@
 package com.memeocr.app
 
 import android.Manifest
+import android.app.Dialog
+import android.graphics.Bitmap
 import android.app.Activity
 import android.app.AlertDialog
 import android.content.Intent
@@ -17,6 +19,7 @@ import android.widget.*
 import com.memeocr.app.data.RecognitionDb
 import com.memeocr.app.media.ImageLoader
 import com.memeocr.app.media.MediaStoreReader
+import com.memeocr.app.preview.ZoomImageView
 import com.memeocr.app.ocr.OcrService
 import com.memeocr.app.share.ShareIntents
 import com.memeocr.core.*
@@ -72,6 +75,7 @@ class MainActivity : Activity() {
     private var searchGeneration = 0
     private var albumGeneration = 0
     private var previousProgress: ProgressState? = null
+    private val previewDialogs = mutableSetOf<Dialog>()
     private var disposed = false
     private val prefs by lazy { getSharedPreferences("ui", MODE_PRIVATE) }
 
@@ -488,23 +492,85 @@ class MainActivity : Activity() {
     private fun preview(hit: SearchHit) {
         val image = ImageView(this).apply {
             scaleType = ImageView.ScaleType.FIT_CENTER
-            contentDescription = "图片预览"
+            contentDescription = "图片预览，点击放大"
         }
+        var loadedBitmap: Bitmap? = null
+        var enlarged: Dialog? = null
         val content = column().apply {
             setPadding(dp(16), 0, dp(16), 0)
             addView(image, LinearLayout.LayoutParams(-1, dp(300)))
+            full(text("点击图片放大，可双指缩放", 14f))
             full(text(hit.record.text.take(2000), 14f).apply { setTextIsSelectable(true) })
         }
         val scroll = ScrollView(this).apply { addView(content) }
         val dialog = AlertDialog.Builder(this).setTitle("图片预览").setView(scroll)
             .setPositiveButton("分享图片") { _, _ -> share(listOf(hit.record)) }
             .setNegativeButton("关闭", null).show()
-        read({
-            val current = reader.statUri(hit.record.uri)
-            if (current == null || !hit.record.matchesVersion(current)) throw java.io.IOException("图片已改变或不可访问，请重新搜索")
-            ImageLoader.decodeForOcr { reader.openInputStream(hit.record.uri) }
-        }) { bitmap ->
-            if (dialog.isShowing) image.setImageBitmap(bitmap) else bitmap?.recycle()
+        previewDialogs.add(dialog)
+        dialog.setOnDismissListener {
+            enlarged?.dismiss()
+            image.setImageDrawable(null)
+            loadedBitmap = null
+            previewDialogs.remove(dialog)
+        }
+        image.setOnClickListener {
+            val bitmap = loadedBitmap ?: return@setOnClickListener
+            if (enlarged?.isShowing == true) return@setOnClickListener
+            val zoom = ZoomImageView(this).apply { setBitmap(bitmap) }
+            val viewer = Dialog(this, android.R.style.Theme_Material_NoActionBar)
+            zoom.setOnClickListener { viewer.dismiss() }
+            val panel = FrameLayout(this).apply {
+                setBackgroundColor(Color.BLACK)
+                addView(zoom, FrameLayout.LayoutParams(-1, -1))
+                addView(TextView(this@MainActivity).apply {
+                    text = "×"
+                    textSize = 32f
+                    gravity = Gravity.CENTER
+                    setTextColor(Color.WHITE)
+                    setBackgroundColor(Color.argb(150, 0, 0, 0))
+                    contentDescription = "退出原图预览"
+                    isFocusable = true
+                    setOnClickListener { viewer.dismiss() }
+                }, FrameLayout.LayoutParams(dp(48), dp(48), Gravity.TOP or Gravity.END))
+            }
+            panel.setOnApplyWindowInsetsListener { view, insets ->
+                if (Build.VERSION.SDK_INT >= 35) {
+                    val bars = insets.getInsets(WindowInsets.Type.systemBars() or WindowInsets.Type.displayCutout())
+                    view.setPadding(bars.left, bars.top, bars.right, bars.bottom)
+                }
+                insets
+            }
+            viewer.setContentView(panel)
+            viewer.setOnDismissListener {
+                zoom.setBitmap(null)
+                previewDialogs.remove(viewer)
+                enlarged = null
+            }
+            enlarged = viewer
+            previewDialogs.add(viewer)
+            viewer.show()
+            viewer.window?.setLayout(-1, -1)
+        }
+        // Use a separate handler so Activity cleanup cannot discard bitmap ownership cleanup.
+        io.execute {
+            var bitmap: Bitmap? = null
+            var failure: Exception? = null
+            try {
+                val current = reader.statUri(hit.record.uri)
+                if (current == null || !hit.record.matchesVersion(current))
+                    throw java.io.IOException("图片已改变或不可访问，请重新搜索")
+                bitmap = ImageLoader.decodeForOcr { reader.openInputStream(hit.record.uri) }
+                    ?: throw java.io.IOException("图片无法解码")
+            } catch (e: Exception) { failure = e }
+            Handler(Looper.getMainLooper()).post {
+                if (disposed || !dialog.isShowing) bitmap?.recycle()
+                else if (failure != null) {
+                    Toast.makeText(this, RecognitionPolicy.describeError(failure!!), Toast.LENGTH_LONG).show()
+                } else {
+                    loadedBitmap = bitmap
+                    image.setImageBitmap(bitmap)
+                }
+            }
         }
     }
 
@@ -575,6 +641,8 @@ class MainActivity : Activity() {
     }
     override fun onDestroy() {
         disposed = true; main.removeCallbacksAndMessages(null)
+        previewDialogs.toList().forEach { it.dismiss() }
+        previewDialogs.clear()
         thumbs.shutdownNow()
         io.execute { db.close() }; io.shutdown()
         super.onDestroy()
