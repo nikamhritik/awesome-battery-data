@@ -2,7 +2,7 @@
 
 一款纯本地的 Android 和 Windows meme 搜索工具。读取本地相册或文件夹，识别图片中的文字并保存结果，之后输入文字就能查找对应的 meme，无需部署服务器。
 
-[Windows EXE](https://github.com/rb-tyz/wheres-my-meme/releases/download/v1.1.0/WhereIsMyMeme-1.1.0-windows-x64.exe) · [Android APK](https://github.com/rb-tyz/wheres-my-meme/releases/download/v1.1.0/MemeOCR-1.1.0.apk) · [Windows 使用说明](docs/windows.md) · [English](README-en.md)
+[Windows EXE](https://github.com/rb-tyz/wheres-my-meme/releases/download/v1.1.0/WhereIsMyMeme-1.1.0-windows-x64.exe) · [Android APK](https://github.com/rb-tyz/wheres-my-meme/releases/download/v1.1.1/MemeOCR-1.1.1.apk) · [Windows 使用说明](docs/windows.md) · [English](README-en.md)
 
 - **纯本地**：两个平台都随程序提供中文 OCR 模型，识别、缓存和搜索无需联网，不上传图片。
 - **分批处理**：复用已保存的识别结果，限制图片解码和缩略图缓存的内存占用。
@@ -18,13 +18,13 @@
 
 ## 当前版本
 
-当前版本为 1.1.0，新增两端的批量选中功能。上方提供已发布的 Android APK 和 Windows EXE。功能和测试范围见 [批量选中说明](docs/bulk-selection.md)。
+Android 当前版本为 1.1.1，新增可缩放的大图预览。Windows 版仍为 1.1.0，可前往 [v1.1.0 Release](https://github.com/rb-tyz/wheres-my-meme/releases/tag/v1.1.0) 下载。两端均支持批量选中，功能和测试范围见 [批量选中说明](docs/bulk-selection.md)。
 
 Windows 1.1.0 是适用于 Windows 10/11 x64 的便携 EXE。程序内置 Python、Qt、中文 OCR 模型和运行库，无需安装 Python，也不需要首次下载模型。启动时会将运行文件解压到系统临时目录。
 
-Android 1.1.0，已签名的非调试版 APK，约 44.2 MiB。支持 Android 8.0 / API 26 及以上版本。
+Android 1.1.1，已签名的非调试版 APK，约 44.3 MiB。支持 Android 8.0 / API 26 及以上版本。
 
-Android 已在没有 Google Play 服务、关闭网络的 Android 11 AOSP 模拟器及华为 Mate 60 Pro 手机中运行验证。Windows 构建和测试情况见 [Windows 测试记录](docs/windows.md)。
+此前 Android 版本已在没有 Google Play 服务、关闭网络的 Android 11 AOSP 模拟器及华为 Mate 60 Pro 手机中运行验证。1.1.1 的大图手势尚待真机验证；本次模拟器启动失败。Windows 构建和测试情况见 [Windows 测试记录](docs/windows.md)。
 
 ## Windows 使用方法
 
@@ -53,12 +53,12 @@ Windows 使用 RapidOCR 内置的中文 PP-OCRv4 模型，Android 使用 ML Kit�
 
 ## Android 安装与使用
 
-1. 将 [MemeOCR-1.1.0.apk](https://github.com/rb-tyz/wheres-my-meme/releases/download/v1.1.0/MemeOCR-1.1.0.apk) 传到手机，使用系统安装器打开。如果系统询问，允许用于打开文件的应用安装此 APK。
+1. 将 [MemeOCR-1.1.1.apk](https://github.com/rb-tyz/wheres-my-meme/releases/download/v1.1.1/MemeOCR-1.1.1.apk) 传到手机，使用系统安装器打开。如果系统询问，允许用于打开文件的应用安装此 APK。
 2. 打开 **Meme 文字搜索**，授予照片读取权限。应用只显示获准访问的图片。通知权限用于在通知栏展示识别进度。
 3. 选择本地相册。第一次建议先处理 100 张，看看自己图库里的识别效果。默认每批 1000 张，可输入 1–10000。
 4. 点击 **开始识别本批**。每张识别完成后先保存，再更新进度。点击 **停止本批** 后，会处理并保存当前图片，然后停止。
 5. 再次开始时自动跳过已完成且未改变的图片；没有文字也算完成。失败的图片通过 **重试本相册失败项** 单独重试。
-6. 切换到 **搜索图片**，输入文字并点击 **查找图片**。点击结果可预览原图，再打开系统分享菜单。
+6. 切换到 **搜索图片**，输入文字并点击 **查找图片**。点击结果可预览图片或打开系统分享菜单。在预览界面再次点击图片可打开大图，支持双指缩放、拖动查看和双击放大或复位；单击大图或右上角的叉号退出。
 7. 点击 **批量选择**，或长按一张结果，进入选择模式。点击图片可以选中或取消，**全选结果** 和 **清空选择** 操作全部结果；**分享所选** 将所有选中的原图交给系统分享菜单。重新搜索会清空选择。旋转屏幕或从分享应用返回后，会保留仍可访问、版本未变化的选择；重新启动进程会清空选择。
 
 搜索范围为所有已经识别、当前仍获准访问的相册。图片删除、内容发生可检测的变化或访问权限丢失后，旧记录不会继续出现在搜索结果里。
